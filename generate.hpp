@@ -50,54 +50,16 @@ template<typename T>
 concept Arithmetic = Integer<T> || Floating<T>;
 
 /**
- * @tparam Container queue, stack, ...
+ * @tparam Cont set, unordered_set, map, unordered_map, ...
  */
 template<typename Cont>
-concept ContainerPush = requires(Cont c, typename Cont::value_type v) {
-    c.push(v);
-};
-
-/**
- * @tparam Container list, deque, vector, ...
- */
-template<typename Cont>
-concept ContainerPushBack = requires(Cont c, typename Cont::value_type v) {
-    c.push_back(v);
-};
-
-/**
- * @tparam Container forward_list, ...
- */
-template<typename Cont>
-concept ContainerPushFront = requires(Cont c, typename Cont::value_type v) {
-    c.push_front(v);
-};
-
-
-template<typename Cont>
-concept ContainerInsert = requires(Cont c, typename Cont::value_type v) {
-    c.insert(v);
-};
-
-/**
- * @tparam Container set, unordered_set, ...
- */
-template<typename Cont, typename Item = typename Cont::value_type>
-concept Set = requires(Cont c, Item v) {
-    c.insert(v);
-    requires std::same_as<
-        decltype(c.insert(v)),
-        std::pair<typename Cont::iterator, bool>
-    >;
-
-    requires std::equality_comparable<Item>;
-
+concept AssociativeContainer = requires(Cont c, typename Cont::value_type v) {
+    { c.insert(v) } -> std::same_as<std::pair<typename Cont::iterator, bool>>;
     typename Cont::key_type;
-    typename Cont::key_compare;
-};
+} || requires { typename Cont::key_type; typename Cont::mapped_type; };
 
 /**
- * @tparam Container array, ...
+ * @tparam Cont array, ...
  */
 template<typename Cont>
 concept Array = requires(Cont c, typename Cont::value_type v) {
@@ -106,52 +68,65 @@ concept Array = requires(Cont c, typename Cont::value_type v) {
     // { c[0] } -> std::convertible_to<typename Cont::value_type&>;  // less useful than .at()
 };
 
+/**
+ * @tparam Cont queue, stack, ...
+ */
+template<typename Cont>
+concept ContainerPush = requires(Cont c, typename Cont::value_type v) {
+    c.push(v);
+};
+
+/**
+ * @tparam Cont list, deque, vector, ...
+ */
+template<typename Cont>
+concept ContainerPushBack = requires(Cont c, typename Cont::value_type v) {
+    c.push_back(v);
+};
+
+/**
+ * @tparam Cont forward_list, ...
+ */
+template<typename Cont>
+concept ContainerPushFront = requires(Cont c, typename Cont::value_type v) {
+    c.push_front(v);
+};
+
+template<typename Cont>
+concept ContainerInsert = requires(Cont c, typename Cont::value_type v) {
+    c.insert(v);
+} && !AssociativeContainer<Cont>;
+
+/**
+ * @tparam Cont deque, ... (two-way container)
+ * @note Helper to choose between push_back() and push_front()
+ */
+template<typename Cont>
+concept ContainerFrontBack = ContainerPushFront<Cont> && ContainerPushBack<Cont>;
+
+/**
+ * @tparam Cont list, ... (list with fast insertion)
+ * @note Helper to choose between push_back(), push_front() and insert()
+ */
+template<typename Cont>
+concept List = ContainerPushFront<Cont> && ContainerPushBack<Cont> && ContainerInsert<Cont>;
+
 template<typename Gen>
 concept UniformGenerator = std::uniform_random_bit_generator<Gen>;
 
 // ── Fillers ──────────────────────────────────────────────────────────────────────────
 
 /**
- * @tparam Container queue, stack, ...
- */
-template<ContainerPush Container, typename Distribution, UniformGenerator Generator>
-inline void fill_container(Container& container, size_t count, Distribution& dist, Generator& gen) {
-    for (size_t i = 0; i < count; ++i) {
-        container.push(dist(gen));
-    }
-}
-
-/**
- * @tparam Container list, deque, vector, ...
- */
-template<ContainerPushBack Container, typename Distribution, UniformGenerator Generator>
-inline void fill_container(Container& container, size_t count, Distribution& dist, Generator& gen) {
-    for (size_t i = 0; i < count; ++i) {
-        container.push_back(dist(gen));
-    }
-}
-
-/**
- * @tparam Container forward_list, ...
- */
-template<ContainerPushFront Container, typename Distribution, UniformGenerator Generator>
-inline void fill_container(Container& container, size_t count, Distribution& dist, Generator& gen) {
-    for (size_t i = 0; i < count; ++i) {
-        container.push_front(dist(gen));
-    }
-}
-
-/**
  * @tparam Container set, unordered_set, ...
  * @note For `unordered_set`, repeated generation is required due to hash collisions and lack of ordering.
  *       For `set`, values are always inserted in sorted order, so no retries are needed beyond uniqueness.
  */
-template<Set Container, typename Distribution, UniformGenerator Generator>
+template<AssociativeContainer Container, typename Distribution, UniformGenerator Generator>
 inline void fill_container(Container& container, size_t count, Distribution& dist, Generator& gen) {
     using Item = typename Container::value_type;
 
 #ifdef _LIBCPP_SET
-    // if Container is std::set, we can optimize
+    // if Container is std::set, we can optimize generation
     constexpr bool is_ordered_set = std::is_same_v<Container, std::set<Item>>
                                  || std::is_same_v<Container, std::multiset<Item>>;
 #else
@@ -160,7 +135,7 @@ inline void fill_container(Container& container, size_t count, Distribution& dis
 
     // If the requested count exceeds the number
     // of unique values in [min, max], clamp it
-    if constexpr (Integer<Item>) {
+    if constexpr (std::integral<Item>) {
         auto min_val = static_cast<uint64_t>(dist.min());
         auto max_val = static_cast<uint64_t>(dist.max());
         uint64_t total_unique = max_val - min_val + 1;
@@ -191,9 +166,61 @@ inline void fill_container(Container& container, size_t count, Distribution& dis
 }
 
 /**
- * @tparam Container set, unordered_set, ...
+ * @tparam Container array, ...
  */
-template<ContainerInsert Container, typename Distribution, UniformGenerator Generator>
+template<Array Container, typename Distribution, UniformGenerator Generator>
+inline void fill_container(Container& container, size_t count, Distribution& dist, Generator& gen) {
+    for (size_t i = 0; i < count; ++i) {
+        container.at(i) = dist(gen);
+    }
+}
+
+/**
+ * @tparam Container queue, stack, ...
+ */
+template<ContainerPush Container, typename Distribution, UniformGenerator Generator>
+inline void fill_container(Container& container, size_t count, Distribution& dist, Generator& gen) {
+    for (size_t i = 0; i < count; ++i) {
+        container.push(dist(gen));
+    }
+}
+
+/**
+ * @tparam Container deque, ... (two-way container)
+ * @note Helper to choose between push_back() and push_front()
+ */
+template<ContainerFrontBack Container, typename Distribution, UniformGenerator Generator>
+inline void fill_container(Container& container, size_t count, Distribution& dist, Generator& gen) {
+    for (size_t i = 0; i < count; ++i) {
+        container.push_back(dist(gen));
+    }
+}
+
+/**
+ * @tparam Container list, deque, vector, ...
+ */
+template<ContainerPushBack Container, typename Distribution, UniformGenerator Generator>
+inline void fill_container(Container& container, size_t count, Distribution& dist, Generator& gen) {
+    for (size_t i = 0; i < count; ++i) {
+        container.push_back(dist(gen));
+    }
+}
+
+/**
+ * @tparam Container forward_list, ...
+ */
+template<ContainerPushFront Container, typename Distribution, UniformGenerator Generator>
+inline void fill_container(Container& container, size_t count, Distribution& dist, Generator& gen) {
+    for (size_t i = 0; i < count; ++i) {
+        container.push_front(dist(gen));
+    }
+}
+
+/**
+ * @tparam Container list, ... (list with fast insertion)
+ * @note Helper to choose between push_back(), push_front() and insert()
+ */
+template<List Container, typename Distribution, UniformGenerator Generator>
 inline void fill_container(Container& container, size_t count, Distribution& dist, Generator& gen) {
     for (size_t i = 0; i < count; ++i) {
         container.insert(dist(gen));
@@ -201,12 +228,12 @@ inline void fill_container(Container& container, size_t count, Distribution& dis
 }
 
 /**
- * @tparam Container array, ...
+ * @tparam Container set, unordered_set, ...
  */
-template<Array Container, typename Distribution, UniformGenerator Generator>
+template<ContainerInsert Container, typename Distribution, UniformGenerator Generator>
 inline void fill_container(Container& container, size_t count, Distribution& dist, Generator& gen) {
     for (size_t i = 0; i < count; ++i) {
-        container.at(i) = dist(gen);
+        container.insert(dist(gen));
     }
 }
 
