@@ -60,6 +60,13 @@ concept ContainerPushBack = requires(Cont c, typename Cont::value_type v) {
 };
 
 template<typename Cont>
+concept ContainerPushFront = requires(Cont c, typename Cont::value_type v) {
+    c.push_front(v);
+};
+
+
+
+template<typename Cont>
 concept Array = requires(Cont c, typename Cont::value_type v) {
     c.fill(v);
     { c.at(0) } -> std::convertible_to<typename Cont::value_type&>;
@@ -99,6 +106,13 @@ template<ContainerPushBack Container, typename Distribution, UniformGenerator Ge
 inline void fill_container(Container& container, size_t count, Distribution& dist, Generator& gen) {
     for (size_t i = 0; i < count; ++i) {
         container.push_back(dist(gen));
+    }
+}
+
+template<ContainerPushFront Container, typename Distribution, UniformGenerator Generator>
+inline void fill_container(Container& container, size_t count, Distribution& dist, Generator& gen) {
+    for (size_t i = 0; i < count; ++i) {
+        container.push_front(dist(gen));
     }
 }
 

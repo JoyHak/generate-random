@@ -77,3 +77,12 @@ TEST_CASE("doubles, large size") {
     }
 }
 
+TEST_CASE("doubles, very large size") {
+    auto lst = generate<list<double>>(1'000'000, 0.001, 0.999, 67890);
+
+    for (double val : lst) {
+        REQUIRE(val >= 0.001);
+        REQUIRE(val <= 0.999);
+    }
+}
+
