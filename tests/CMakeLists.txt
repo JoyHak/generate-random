@@ -16,7 +16,10 @@ function(declare_test name)
 endfunction()
 
 
-declare_test(generate)
+declare_test(vector)
+declare_test(list)
+declare_test(deque)
+declare_test(stack)
 
 if (ENABLE_ICECREAM)
   declare_test(icecream)
