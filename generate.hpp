@@ -60,7 +60,11 @@ concept ContainerPushBack = requires(Cont c, typename Cont::value_type v) {
 };
 
 template<typename Cont>
-concept ContainerInteger = Integer<typename Cont::value_type>;
+concept Array = requires(Cont c, typename Cont::value_type v) {
+    c.fill(v);
+    { c.at(0) } -> std::convertible_to<typename Cont::value_type&>;
+    // { c[0] } -> std::convertible_to<typename Cont::value_type&>;  // less useful than .at()
+};
 
 template<typename Gen>
 concept UniformGenerator = std::uniform_random_bit_generator<Gen>;
@@ -95,6 +99,13 @@ template<ContainerPushBack Container, typename Distribution, UniformGenerator Ge
 inline void fill_container(Container& container, size_t count, Distribution& dist, Generator& gen) {
     for (size_t i = 0; i < count; ++i) {
         container.push_back(dist(gen));
+    }
+}
+
+template<Array Container, typename Distribution, UniformGenerator Generator>
+inline void fill_container(Container& container, size_t count, Distribution& dist, Generator& gen) {
+    for (size_t i = 0; i < count; ++i) {
+        container.at(i) = dist(gen);
     }
 }
 
