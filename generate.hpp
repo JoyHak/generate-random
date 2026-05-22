@@ -64,8 +64,6 @@ concept ContainerPushFront = requires(Cont c, typename Cont::value_type v) {
     c.push_front(v);
 };
 
-
-
 template<typename Cont>
 concept Array = requires(Cont c, typename Cont::value_type v) {
     c.fill(v);
@@ -75,23 +73,6 @@ concept Array = requires(Cont c, typename Cont::value_type v) {
 
 template<typename Gen>
 concept UniformGenerator = std::uniform_random_bit_generator<Gen>;
-
-// ── Distributions ────────────────────────────────────────────────────────────────────
-
-template<Integer Item>
-inline auto make_distribution(Item min, Item max) {
-    return std::uniform_int_distribution<Item>(min, max);
-}
-
-template<Floating Item>
-inline auto make_distribution(Item min, Item max) {
-    return std::uniform_real_distribution<Item>(min, max);
-}
-
-inline auto make_distribution() {
-    // 50% true, 50% false
-    return std::bernoulli_distribution(0.5);
-}
 
 // ── Fillers ──────────────────────────────────────────────────────────────────────────
 
@@ -121,6 +102,23 @@ inline void fill_container(Container& container, size_t count, Distribution& dis
     for (size_t i = 0; i < count; ++i) {
         container.at(i) = dist(gen);
     }
+}
+
+// ── Distributions ────────────────────────────────────────────────────────────────────
+
+template<Integer Item>
+inline auto make_distribution(Item min, Item max) {
+    return std::uniform_int_distribution<Item>(min, max);
+}
+
+template<Floating Item>
+inline auto make_distribution(Item min, Item max) {
+    return std::uniform_real_distribution<Item>(min, max);
+}
+
+inline auto make_distribution() {
+    // 50% true, 50% false
+    return std::bernoulli_distribution(0.5);
 }
 
 // ── Generators ───────────────────────────────────────────────────────────────────────
