@@ -49,21 +49,56 @@ concept Floating = std::__libcpp_random_is_valid_realtype<T>::value;
 template<typename T>
 concept Arithmetic = Integer<T> || Floating<T>;
 
+/**
+ * @tparam Container queue, stack, ...
+ */
 template<typename Cont>
 concept ContainerPush = requires(Cont c, typename Cont::value_type v) {
     c.push(v);
 };
 
+/**
+ * @tparam Container list, deque, vector, ...
+ */
 template<typename Cont>
 concept ContainerPushBack = requires(Cont c, typename Cont::value_type v) {
     c.push_back(v);
 };
 
+/**
+ * @tparam Container forward_list, ...
+ */
 template<typename Cont>
 concept ContainerPushFront = requires(Cont c, typename Cont::value_type v) {
     c.push_front(v);
 };
 
+
+template<typename Cont>
+concept ContainerInsert = requires(Cont c, typename Cont::value_type v) {
+    c.insert(v);
+};
+
+/**
+ * @tparam Container set, unordered_set, ...
+ */
+template<typename Cont, typename Item = typename Cont::value_type>
+concept Set = requires(Cont c, Item v) {
+    c.insert(v);
+    requires std::same_as<
+        decltype(c.insert(v)),
+        std::pair<typename Cont::iterator, bool>
+    >;
+
+    requires std::equality_comparable<Item>;
+
+    typename Cont::key_type;
+    typename Cont::key_compare;
+};
+
+/**
+ * @tparam Container array, ...
+ */
 template<typename Cont>
 concept Array = requires(Cont c, typename Cont::value_type v) {
     c.fill(v);
@@ -76,6 +111,9 @@ concept UniformGenerator = std::uniform_random_bit_generator<Gen>;
 
 // ── Fillers ──────────────────────────────────────────────────────────────────────────
 
+/**
+ * @tparam Container queue, stack, ...
+ */
 template<ContainerPush Container, typename Distribution, UniformGenerator Generator>
 inline void fill_container(Container& container, size_t count, Distribution& dist, Generator& gen) {
     for (size_t i = 0; i < count; ++i) {
@@ -83,6 +121,9 @@ inline void fill_container(Container& container, size_t count, Distribution& dis
     }
 }
 
+/**
+ * @tparam Container list, deque, vector, ...
+ */
 template<ContainerPushBack Container, typename Distribution, UniformGenerator Generator>
 inline void fill_container(Container& container, size_t count, Distribution& dist, Generator& gen) {
     for (size_t i = 0; i < count; ++i) {
@@ -90,6 +131,9 @@ inline void fill_container(Container& container, size_t count, Distribution& dis
     }
 }
 
+/**
+ * @tparam Container forward_list, ...
+ */
 template<ContainerPushFront Container, typename Distribution, UniformGenerator Generator>
 inline void fill_container(Container& container, size_t count, Distribution& dist, Generator& gen) {
     for (size_t i = 0; i < count; ++i) {
@@ -97,6 +141,68 @@ inline void fill_container(Container& container, size_t count, Distribution& dis
     }
 }
 
+/**
+ * @tparam Container set, unordered_set, ...
+ * @note For `unordered_set`, repeated generation is required due to hash collisions and lack of ordering.
+ *       For `set`, values are always inserted in sorted order, so no retries are needed beyond uniqueness.
+ */
+template<Set Container, typename Distribution, UniformGenerator Generator>
+inline void fill_container(Container& container, size_t count, Distribution& dist, Generator& gen) {
+    using Item = typename Container::value_type;
+
+#ifdef _LIBCPP_SET
+    // if Container is std::set, we can optimize
+    constexpr bool is_ordered_set = std::is_same_v<Container, std::set<Item>>
+                                 || std::is_same_v<Container, std::multiset<Item>>;
+#else
+    constexpr bool is_ordered_set = true;
+#endif
+
+    // If the requested count exceeds the number
+    // of unique values in [min, max], clamp it
+    if constexpr (Integer<Item>) {
+        auto min_val = static_cast<uint64_t>(dist.min());
+        auto max_val = static_cast<uint64_t>(dist.max());
+        uint64_t total_unique = max_val - min_val + 1;
+
+        if (count >= total_unique) {
+            // We're asking for all or most possible values.
+            // Better to generate full range
+            count = static_cast<size_t>(total_unique);
+
+            // For ordered set, we can fill directly in order
+            if constexpr (is_ordered_set) {
+                for (uint64_t val = min_val; val <= max_val; ++val) {
+                    container.insert(static_cast<Item>(val));
+                }
+                return;
+            }
+        }
+    }
+
+    // General case: insert until we have `count` unique elements
+    size_t inserted = 0;
+    while (inserted < count) {
+        auto [it, success] = container.insert(dist(gen));
+        if (success) {
+            ++inserted;
+        }
+    }
+}
+
+/**
+ * @tparam Container set, unordered_set, ...
+ */
+template<ContainerInsert Container, typename Distribution, UniformGenerator Generator>
+inline void fill_container(Container& container, size_t count, Distribution& dist, Generator& gen) {
+    for (size_t i = 0; i < count; ++i) {
+        container.insert(dist(gen));
+    }
+}
+
+/**
+ * @tparam Container array, ...
+ */
 template<Array Container, typename Distribution, UniformGenerator Generator>
 inline void fill_container(Container& container, size_t count, Distribution& dist, Generator& gen) {
     for (size_t i = 0; i < count; ++i) {
