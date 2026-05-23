@@ -114,56 +114,36 @@ concept List = ContainerPushFront<Cont> && ContainerPushBack<Cont> && ContainerI
 template<typename Gen>
 concept UniformGenerator = std::uniform_random_bit_generator<Gen>;
 
-// ── Fillers ──────────────────────────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────────────
 
 /**
- * @tparam Container set, unordered_set, ...
- * @note For `unordered_set`, repeated generation is required due to hash collisions and lack of ordering.
- *       For `set`, values are always inserted in sorted order, so no retries are needed beyond uniqueness.
+ * Limits the count of elements generated in a container if the upper bound `dist.max()` is lower than `count`.
+ * @note The function requires support for comparison and subtraction operations, so it only works with <i>int</i> types.
+ * @tparam Item The type of element in the container to be generated.
+ * @tparam Distribution Uniform distribution with `max()` method.
+ * @param count Number of elements to generate.
+ * @param dist Uniform distribution for sequence generation.
+ * @return
  */
-template<AssociativeContainer Container, typename Distribution, UniformGenerator Generator>
-inline void fill_container(Container& container, size_t count, Distribution& dist, Generator& gen) {
-    using Item = typename Container::value_type;
+template<std::integral Item, typename Distribution>
+inline size_t clamp_count(size_t count, Distribution& dist) {
+    auto min_val = static_cast<uint64_t>(dist.min());
+    auto max_val = static_cast<uint64_t>(dist.max());
+    uint64_t total_unique = max_val - min_val + 1;
 
-#ifdef _LIBCPP_SET
-    // if Container is std::set, we can optimize generation
-    constexpr bool is_ordered_set = std::is_same_v<Container, std::set<Item>>
-                                 || std::is_same_v<Container, std::multiset<Item>>;
-#else
-    constexpr bool is_ordered_set = true;
-#endif
-
-    // If the requested count exceeds the number
-    // of unique values in [min, max], clamp it
-    if constexpr (std::integral<Item>) {
-        auto min_val = static_cast<uint64_t>(dist.min());
-        auto max_val = static_cast<uint64_t>(dist.max());
-        uint64_t total_unique = max_val - min_val + 1;
-
-        if (count >= total_unique) {
-            // We're asking for all or most possible values.
-            // Better to generate full range
-            count = static_cast<size_t>(total_unique);
-
-            // For ordered set, we can fill directly in order
-            if constexpr (is_ordered_set) {
-                for (uint64_t val = min_val; val <= max_val; ++val) {
-                    container.insert(static_cast<Item>(val));
-                }
-                return;
-            }
-        }
+    if (count >= total_unique) {
+        count = static_cast<size_t>(total_unique);
     }
 
-    // General case: insert until we have `count` unique elements
-    size_t inserted = 0;
-    while (inserted < count) {
-        auto [it, success] = container.insert(dist(gen));
-        if (success) {
-            ++inserted;
-        }
-    }
+    return count;
 }
+
+template<typename Item, typename Distribution>
+inline size_t clamp_count(size_t count, Distribution& dist) {
+    return count;
+}
+
+// ── Fillers ──────────────────────────────────────────────────────────────────────────
 
 /**
  * @tparam Container array, ...
