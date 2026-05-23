@@ -50,25 +50,6 @@ template<typename T>
 concept Arithmetic = Integer<T> || Floating<T>;
 
 /**
- * @tparam Cont set, unordered_set, map, unordered_map, ...
- */
-template<typename Cont>
-concept AssociativeContainer = requires(Cont c, typename Cont::value_type v) {
-    { c.insert(v) } -> std::same_as<std::pair<typename Cont::iterator, bool>>;
-    typename Cont::key_type;
-} || requires { typename Cont::key_type; typename Cont::mapped_type; };
-
-/**
- * @tparam Cont array, ...
- */
-template<typename Cont>
-concept Array = requires(Cont c, typename Cont::value_type v) {
-    c.fill(v);
-    { c.at(0) } -> std::convertible_to<typename Cont::value_type&>;
-    // { c[0] } -> std::convertible_to<typename Cont::value_type&>;  // less useful than .at()
-};
-
-/**
  * @tparam Cont queue, stack, ...
  */
 template<typename Cont>
@@ -95,7 +76,7 @@ concept ContainerPushFront = requires(Cont c, typename Cont::value_type v) {
 template<typename Cont>
 concept ContainerInsert = requires(Cont c, typename Cont::value_type v) {
     c.insert(v);
-} && !AssociativeContainer<Cont>;
+};
 
 /**
  * @tparam Cont deque, ... (two-way container)
@@ -110,6 +91,82 @@ concept ContainerFrontBack = ContainerPushFront<Cont> && ContainerPushBack<Cont>
  */
 template<typename Cont>
 concept List = ContainerPushFront<Cont> && ContainerPushBack<Cont> && ContainerInsert<Cont>;
+
+/**
+ * Associative containers with unique values <i>(set, map, ...)</i>
+ * will be generated differently than containers that support duplicates.
+ * Since uniform distribution is not suitable for unique values due to high probability
+ * of duplicating random values, we'll use <code>shuffle()</code> for containers with unique values
+ * <i>(except for <code>multimap, multiset</code> etc., see below)</i><br><br>
+ *
+ * The <a href="https://eel.is/c++draft/associative.reqmts">standart</a> does not describe
+ * clear requirements for each associative container:
+ * <code> set, unordered_set, map, unordered_map</code>, etc.<br>
+ * In order to distinguish such containers from each other, we will create concepts based on
+ * public <i>typedefs</i>.
+ */
+
+/**
+ * @tparam Cont set, unordered_set, map, unordered_map, ...
+ * @remark <code>multimap, multiset</code> etc. do not store unique elements.<br>
+ * Actually they do not fit this concept, since their <i>insert()</i> method
+ * does not return <i>std::pair</i>.<br><br>
+ * All concepts below will not involve these containers.
+ * Random values for <code>multimap, multiset</code> etc. will be generated in the same way as for other containers
+ * using uniform distribution.
+ */
+template<typename Cont>
+concept AssociativeContainer =
+    ContainerInsert<Cont>
+ && requires(Cont c, typename Cont::value_type v) {
+        typename Cont::key_type;
+        { c.insert(v) } -> std::same_as<
+            std::pair<typename Cont::iterator,
+            bool>
+        >;
+    };
+
+template<typename Cont>
+concept UnorderedSet =
+    AssociativeContainer<Cont>
+ && requires {
+        typename Cont::key_equal;
+        typename Cont::hasher;
+    };
+
+template<typename Cont>
+concept OrderedSet =
+    AssociativeContainer<Cont>
+ && requires {
+        typename Cont::key_compare;
+        typename Cont::value_compare;
+    };
+
+template<typename Cont>
+concept HashTable =
+    AssociativeContainer<Cont>
+ && requires {
+        typename Cont::key_equal;
+        typename Cont::mapped_type;
+    };
+
+template<typename Cont>
+concept HashMap =
+    AssociativeContainer<Cont>
+    && requires {
+        typename Cont::key_compare;
+        typename Cont::mapped_type;
+    };
+
+/**
+ * @tparam Cont array, ...
+ */
+template<typename Cont>
+concept Array = requires(Cont c, typename Cont::value_type v) {
+    c.fill(v);
+    { c.at(0) } -> std::convertible_to<typename Cont::value_type&>;
+    // { c[0] } -> std::convertible_to<typename Cont::value_type&>;  // less useful than .at()
+};
 
 template<typename Gen>
 concept UniformGenerator = std::uniform_random_bit_generator<Gen>;
