@@ -34,7 +34,6 @@ using std::integral, std::floating_point;
 template<typename Gen>
 concept uniform_generator = std::uniform_random_bit_generator<Gen>;
 
-
 /**
  * According to the <a href="https://eel.is/c++draft/rand#req.genl-1">standart</a>:
  * <br><i>where the template parameters are not constrained, the names of template parameters
@@ -55,6 +54,9 @@ concept rand_floating = std::__libcpp_random_is_valid_realtype<T>::value;
 
 template<typename T>
 concept rand_arithmetic = rand_integer<T> || rand_floating<T>;
+
+template<typename T>
+concept boolean = std::is_same_v<bool, T>;
 
 /**
  * @tparam Cont queue, stack, ...
@@ -98,6 +100,16 @@ concept container_front_back = container_push_front<Cont> && container_push_back
  */
 template<typename Cont>
 concept list = container_push_front<Cont> && container_push_back<Cont> && container_insert<Cont>;
+
+/**
+ * @tparam Cont array, ...
+ */
+template<typename Cont>
+concept array = requires(Cont c, typename Cont::value_type v) {
+    c.fill(v);
+    { c.at(0) } -> std::convertible_to<typename Cont::value_type&>;
+    // { c[0] } -> std::convertible_to<typename Cont::value_type&>;  // less useful than .at()
+};
 
 /**
  * Associative containers with unique values <i>(set, map, ...)</i>
@@ -164,45 +176,6 @@ concept hash_map =
         typename Cont::key_compare;
         typename Cont::mapped_type;
     };
-
-/**
- * @tparam Cont array, ...
- */
-template<typename Cont>
-concept array = requires(Cont c, typename Cont::value_type v) {
-    c.fill(v);
-    { c.at(0) } -> std::convertible_to<typename Cont::value_type&>;
-    // { c[0] } -> std::convertible_to<typename Cont::value_type&>;  // less useful than .at()
-};
-
-// ── Helpers ──────────────────────────────────────────────────────────────────────────
-
-/**
- * Limits the count of elements generated in a container if the upper bound `max` is lower than `count`.
- * @tparam Item The type of element in the container to be generated.
- * The function requires support for comparison and subtraction operations,
- * so it only works with <i>int</i> types.
- * @param count Number of elements to generate.
- * @param min Minimum value.
- * @param max Maximum value.
- */
-template<integral Item>
-inline size_t clamp_count(size_t count, Item min = 1, Item max = 26) {
-    uint64_t min_val = static_cast<uint64_t>(min);
-    uint64_t max_val = static_cast<uint64_t>(max);
-    uint64_t total_unique = max_val - min_val + 1;
-
-    if (count >= total_unique) {
-        count = static_cast<size_t>(total_unique);
-    }
-
-    return count;
-}
-
-template<typename Item>
-inline size_t clamp_count(size_t count, Item, Item) {
-    return count;
-}
 
 // ── Fillers ──────────────────────────────────────────────────────────────────────────
 
@@ -280,6 +253,25 @@ inline void fill_container(Container& container, size_t count, Distribution& dis
 
 // ── Distributions ────────────────────────────────────────────────────────────────────
 
+template<integral T>
+struct sequential_distribution {
+    T current;
+    T max;
+
+    sequential_distribution(T min, T max)
+        : current(min), max(max) {}
+
+    template<typename Generator>
+    T operator()(Generator& /* gen */) {
+        return current < max ? current++ : max;
+    }
+};
+
+template<integral Item>
+inline auto make_sequential_distribution(Item min, Item max) {
+    return sequential_distribution<Item>(min, max);
+}
+
 template<rand_integer Item>
 inline auto make_distribution(Item min, Item max) {
     return std::uniform_int_distribution<Item>(min, max);
@@ -295,7 +287,135 @@ inline auto make_distribution() {
     return std::bernoulli_distribution(0.5);
 }
 
+// ── Helpers ──────────────────────────────────────────────────────────────────────────
+
+/**
+ * Limits the count of elements generated in a container if the upper bound `max` is lower than `count`.
+ * @tparam Item The type of element in the container to be generated.
+ * The function requires support for comparison and subtraction operations,
+ * so it only works with <i>int</i> types.
+ * @param count Number of elements to generate.
+ * @param min Minimum value.
+ * @param max Maximum value.
+ */
+template<integral Item>
+inline size_t clamp_count(size_t count, Item min = 1, Item max = 26) {
+    uint64_t min_val = static_cast<uint64_t>(min);
+    uint64_t max_val = static_cast<uint64_t>(max);
+    uint64_t total_unique = max_val - min_val + 1;
+
+    if (count >= total_unique) {
+        count = static_cast<size_t>(total_unique);
+    }
+
+    return count;
+}
+
+template<typename Item>
+inline size_t clamp_count(size_t count, Item, Item) {
+    return count;
+}
+
 // ── Generators ───────────────────────────────────────────────────────────────────────
+
+/**
+ * @brief Generates a container of unique random integer values.
+ * @remark <code>set, unordered_set, map, unordered_map</code> and other similar assoc. containers excludes duplicates.
+ * If the generated value already exists, <strong>it will not be added!</strong><br><br>
+ * If count > max, the final container size will be max - min + 1. Otherwise it will be equal to count.
+ * @tparam Container The container type.
+ * @tparam Item Integer container item type (auto-inferred).
+ * @tparam Generator Random engine for sequence generation.
+ * @tparam Seed Unsigned integer type.
+ * @param count Number of elements.
+ * @param min Minimum value.
+ * @param max Maximum value.
+ * @param seed Initial seed value for the random number engine. Using the same seed allows reproducible results.
+ * @return The filled container.
+ */
+template<
+    typename Container,
+    integral Item = typename Container::value_type,
+    uniform_generator Generator = std::mt19937,
+    typename Seed = unsigned int
+>
+Container generate_uniq(
+    size_t count = 10,
+    Item min = 1, Item max = 26,
+    Seed seed = std::random_device{}()
+) {
+    Container container;
+
+    count = clamp_count<Item>(count, min, max);
+    if constexpr (requires { container.reserve(count); }) {
+        container.reserve(count);
+    }
+
+    Generator gen(seed);
+    auto dist = make_sequential_distribution(min, max);
+    fill_container(container, count, dist, gen);
+
+    if constexpr (!requires { typename Container::key_compare; }) {
+        // Shuffle only unordered container
+        std::shuffle(container.begin(), container.end(), gen);
+    }
+    return container;
+}
+
+/**
+ * @brief Generates a container of unique random floating point values.
+ * @tparam Container The container type.
+ * @tparam Item Floating point container item type (auto-inferred).
+ * @tparam Generator Random engine for sequence generation.
+ * @tparam Seed Unsigned integer type.
+ * @param count Number of elements.
+ * @param min Minimum value.
+ * @param max Maximum value.
+ * @param seed Initial seed value for the random number engine. Using the same seed allows reproducible results.
+ * @return The filled container.
+ */
+template<
+    typename Container,
+    rand_floating Item = typename Container::value_type,
+    uniform_generator Generator = std::mt19937,
+    typename Seed = unsigned int
+>
+Container generate_uniq(
+    size_t count = 10,
+    Item min = 1.0f, Item max = 26.0f,
+    Seed seed = std::random_device{}()
+) {
+    Container container;
+
+    if constexpr (requires { container.reserve(count); }) {
+        container.reserve(count);
+    }
+
+    Generator gen(seed);
+    auto dist = make_distribution(min, max);
+    fill_container(container, count, dist, gen);
+
+    return container;
+}
+
+template<
+    associative_container Container,
+    uniform_generator Generator = std::mt19937,
+    typename Seed = unsigned int
+>
+Container generate_bool(
+    size_t /* count */,
+    Seed seed = std::random_device{}()
+) {
+    Container container{0, 1};
+
+    if constexpr (!requires { typename Container::key_compare; }) {
+        // Shuffle only unordered container
+        Generator gen(seed);
+        std::shuffle(container.begin(), container.end(), gen);
+    }
+    return container;
+}
 
 /**
  * @brief Generates a container of random boolean values.
@@ -328,6 +448,34 @@ Container generate_bool(
     fill_container(container, count, dist, gen);
 
     return container;
+}
+
+template<
+    associative_container Container,
+    typename Item = typename Container::value_type,
+    uniform_generator Generator = std::mt19937,
+    typename Seed = unsigned int
+>
+Container generate(
+    size_t count = 10,
+    Item min = 1, Item max = 26,
+    Seed seed = std::random_device{}()
+) {
+    return generate_uniq<Container, Item, Generator, Seed>(count, min, max, seed);
+}
+
+template<
+    typename Container,
+    boolean Item = typename Container::value_type,
+    uniform_generator Generator = std::mt19937,
+    typename Seed = unsigned int
+>
+Container generate(
+    size_t count = 10,
+    Item min = 1, Item max = 26,
+    Seed seed = std::random_device{}()
+) {
+    return generate_bool<Container, Generator, Seed>(count, seed);
 }
 
 /**
