@@ -27,6 +27,13 @@
 #define GENERATE_HPP_
 #include <random>
 #include <concepts>
+#include <algorithm>
+
+using std::integral, std::floating_point;
+
+template<typename Gen>
+concept uniform_generator = std::uniform_random_bit_generator<Gen>;
+
 
 /**
  * According to the <a href="https://eel.is/c++draft/rand#req.genl-1">standart</a>:
@@ -41,19 +48,19 @@
  */
 
 template<typename T>
-concept Integer = std::__libcpp_random_is_valid_inttype<T>::value;
+concept rand_integer = std::__libcpp_random_is_valid_inttype<T>::value;
 
 template<typename T>
-concept Floating = std::__libcpp_random_is_valid_realtype<T>::value;
+concept rand_floating = std::__libcpp_random_is_valid_realtype<T>::value;
 
 template<typename T>
-concept Arithmetic = Integer<T> || Floating<T>;
+concept rand_arithmetic = rand_integer<T> || rand_floating<T>;
 
 /**
  * @tparam Cont queue, stack, ...
  */
 template<typename Cont>
-concept ContainerPush = requires(Cont c, typename Cont::value_type v) {
+concept container_push = requires(Cont c, typename Cont::value_type v) {
     c.push(v);
 };
 
@@ -61,7 +68,7 @@ concept ContainerPush = requires(Cont c, typename Cont::value_type v) {
  * @tparam Cont list, deque, vector, ...
  */
 template<typename Cont>
-concept ContainerPushBack = requires(Cont c, typename Cont::value_type v) {
+concept container_push_back = requires(Cont c, typename Cont::value_type v) {
     c.push_back(v);
 };
 
@@ -69,12 +76,12 @@ concept ContainerPushBack = requires(Cont c, typename Cont::value_type v) {
  * @tparam Cont forward_list, ...
  */
 template<typename Cont>
-concept ContainerPushFront = requires(Cont c, typename Cont::value_type v) {
+concept container_push_front = requires(Cont c, typename Cont::value_type v) {
     c.push_front(v);
 };
 
 template<typename Cont>
-concept ContainerInsert = requires(Cont c, typename Cont::value_type v) {
+concept container_insert = requires(Cont c, typename Cont::value_type v) {
     c.insert(v);
 };
 
@@ -83,14 +90,14 @@ concept ContainerInsert = requires(Cont c, typename Cont::value_type v) {
  * @note Helper to choose between push_back() and push_front()
  */
 template<typename Cont>
-concept ContainerFrontBack = ContainerPushFront<Cont> && ContainerPushBack<Cont>;
+concept container_front_back = container_push_front<Cont> && container_push_back<Cont>;
 
 /**
  * @tparam Cont list, ... (list with fast insertion)
  * @note Helper to choose between push_back(), push_front() and insert()
  */
 template<typename Cont>
-concept List = ContainerPushFront<Cont> && ContainerPushBack<Cont> && ContainerInsert<Cont>;
+concept list = container_push_front<Cont> && container_push_back<Cont> && container_insert<Cont>;
 
 /**
  * Associative containers with unique values <i>(set, map, ...)</i>
@@ -116,8 +123,8 @@ concept List = ContainerPushFront<Cont> && ContainerPushBack<Cont> && ContainerI
  * using uniform distribution.
  */
 template<typename Cont>
-concept AssociativeContainer =
-    ContainerInsert<Cont>
+concept associative_container =
+    container_insert<Cont>
  && requires(Cont c, typename Cont::value_type v) {
         typename Cont::key_type;
         { c.insert(v) } -> std::same_as<
@@ -127,32 +134,32 @@ concept AssociativeContainer =
     };
 
 template<typename Cont>
-concept UnorderedSet =
-    AssociativeContainer<Cont>
+concept unordered_set =
+    associative_container<Cont>
  && requires {
         typename Cont::key_equal;
         typename Cont::hasher;
     };
 
 template<typename Cont>
-concept OrderedSet =
-    AssociativeContainer<Cont>
+concept ordered_set =
+    associative_container<Cont>
  && requires {
         typename Cont::key_compare;
         typename Cont::value_compare;
     };
 
 template<typename Cont>
-concept HashTable =
-    AssociativeContainer<Cont>
+concept hash_table =
+    associative_container<Cont>
  && requires {
         typename Cont::key_equal;
         typename Cont::mapped_type;
     };
 
 template<typename Cont>
-concept HashMap =
-    AssociativeContainer<Cont>
+concept hash_map =
+    associative_container<Cont>
     && requires {
         typename Cont::key_compare;
         typename Cont::mapped_type;
@@ -162,30 +169,27 @@ concept HashMap =
  * @tparam Cont array, ...
  */
 template<typename Cont>
-concept Array = requires(Cont c, typename Cont::value_type v) {
+concept array = requires(Cont c, typename Cont::value_type v) {
     c.fill(v);
     { c.at(0) } -> std::convertible_to<typename Cont::value_type&>;
     // { c[0] } -> std::convertible_to<typename Cont::value_type&>;  // less useful than .at()
 };
 
-template<typename Gen>
-concept UniformGenerator = std::uniform_random_bit_generator<Gen>;
-
 // ── Helpers ──────────────────────────────────────────────────────────────────────────
 
 /**
- * Limits the count of elements generated in a container if the upper bound `dist.max()` is lower than `count`.
- * @note The function requires support for comparison and subtraction operations, so it only works with <i>int</i> types.
+ * Limits the count of elements generated in a container if the upper bound `max` is lower than `count`.
  * @tparam Item The type of element in the container to be generated.
- * @tparam Distribution Uniform distribution with `max()` method.
+ * The function requires support for comparison and subtraction operations,
+ * so it only works with <i>int</i> types.
  * @param count Number of elements to generate.
- * @param dist Uniform distribution for sequence generation.
- * @return
+ * @param min Minimum value.
+ * @param max Maximum value.
  */
-template<std::integral Item, typename Distribution>
-inline size_t clamp_count(size_t count, Distribution& dist) {
-    auto min_val = static_cast<uint64_t>(dist.min());
-    auto max_val = static_cast<uint64_t>(dist.max());
+template<integral Item>
+inline size_t clamp_count(size_t count, Item min = 1, Item max = 26) {
+    uint64_t min_val = static_cast<uint64_t>(min);
+    uint64_t max_val = static_cast<uint64_t>(max);
     uint64_t total_unique = max_val - min_val + 1;
 
     if (count >= total_unique) {
@@ -195,8 +199,8 @@ inline size_t clamp_count(size_t count, Distribution& dist) {
     return count;
 }
 
-template<typename Item, typename Distribution>
-inline size_t clamp_count(size_t count, Distribution& dist) {
+template<typename Item>
+inline size_t clamp_count(size_t count, Item, Item) {
     return count;
 }
 
@@ -205,7 +209,7 @@ inline size_t clamp_count(size_t count, Distribution& dist) {
 /**
  * @tparam Container array, ...
  */
-template<Array Container, typename Distribution, UniformGenerator Generator>
+template<array Container, typename Distribution, uniform_generator Generator>
 inline void fill_container(Container& container, size_t count, Distribution& dist, Generator& gen) {
     for (size_t i = 0; i < count; ++i) {
         container.at(i) = dist(gen);
@@ -215,7 +219,7 @@ inline void fill_container(Container& container, size_t count, Distribution& dis
 /**
  * @tparam Container queue, stack, ...
  */
-template<ContainerPush Container, typename Distribution, UniformGenerator Generator>
+template<container_push Container, typename Distribution, uniform_generator Generator>
 inline void fill_container(Container& container, size_t count, Distribution& dist, Generator& gen) {
     for (size_t i = 0; i < count; ++i) {
         container.push(dist(gen));
@@ -226,7 +230,7 @@ inline void fill_container(Container& container, size_t count, Distribution& dis
  * @tparam Container deque, ... (two-way container)
  * @note Helper to choose between push_back() and push_front()
  */
-template<ContainerFrontBack Container, typename Distribution, UniformGenerator Generator>
+template<container_front_back Container, typename Distribution, uniform_generator Generator>
 inline void fill_container(Container& container, size_t count, Distribution& dist, Generator& gen) {
     for (size_t i = 0; i < count; ++i) {
         container.push_back(dist(gen));
@@ -236,7 +240,7 @@ inline void fill_container(Container& container, size_t count, Distribution& dis
 /**
  * @tparam Container list, deque, vector, ...
  */
-template<ContainerPushBack Container, typename Distribution, UniformGenerator Generator>
+template<container_push_back Container, typename Distribution, uniform_generator Generator>
 inline void fill_container(Container& container, size_t count, Distribution& dist, Generator& gen) {
     for (size_t i = 0; i < count; ++i) {
         container.push_back(dist(gen));
@@ -246,7 +250,7 @@ inline void fill_container(Container& container, size_t count, Distribution& dis
 /**
  * @tparam Container forward_list, ...
  */
-template<ContainerPushFront Container, typename Distribution, UniformGenerator Generator>
+template<container_push_front Container, typename Distribution, uniform_generator Generator>
 inline void fill_container(Container& container, size_t count, Distribution& dist, Generator& gen) {
     for (size_t i = 0; i < count; ++i) {
         container.push_front(dist(gen));
@@ -257,7 +261,7 @@ inline void fill_container(Container& container, size_t count, Distribution& dis
  * @tparam Container list, ... (list with fast insertion)
  * @note Helper to choose between push_back(), push_front() and insert()
  */
-template<List Container, typename Distribution, UniformGenerator Generator>
+template<list Container, typename Distribution, uniform_generator Generator>
 inline void fill_container(Container& container, size_t count, Distribution& dist, Generator& gen) {
     for (size_t i = 0; i < count; ++i) {
         container.insert(dist(gen));
@@ -267,7 +271,7 @@ inline void fill_container(Container& container, size_t count, Distribution& dis
 /**
  * @tparam Container set, unordered_set, ...
  */
-template<ContainerInsert Container, typename Distribution, UniformGenerator Generator>
+template<container_insert Container, typename Distribution, uniform_generator Generator>
 inline void fill_container(Container& container, size_t count, Distribution& dist, Generator& gen) {
     for (size_t i = 0; i < count; ++i) {
         container.insert(dist(gen));
@@ -276,12 +280,12 @@ inline void fill_container(Container& container, size_t count, Distribution& dis
 
 // ── Distributions ────────────────────────────────────────────────────────────────────
 
-template<Integer Item>
+template<rand_integer Item>
 inline auto make_distribution(Item min, Item max) {
     return std::uniform_int_distribution<Item>(min, max);
 }
 
-template<Floating Item>
+template<rand_floating Item>
 inline auto make_distribution(Item min, Item max) {
     return std::uniform_real_distribution<Item>(min, max);
 }
@@ -294,8 +298,40 @@ inline auto make_distribution() {
 // ── Generators ───────────────────────────────────────────────────────────────────────
 
 /**
- * @brief Generates a container of random values with the given distribution and generator.
- * <a href="https://cppinsights.io/s/93dcf68e">Insights</a>
+ * @brief Generates a container of random boolean values.
+ * Allows any type of container element that can be cast to 0 or 1.
+ * @note The default distribution does not support the `bool` type, so this template uses integral type.
+ * @tparam Container The container type.
+ * @tparam Generator Random engine for sequence generation.
+ * @tparam Seed Unsigned integer type.
+ * @param count Number of elements.
+ * @param seed Initial seed value for the random number engine. Using the same seed allows reproducible results.
+ * @return The filled container.
+ */
+template<
+    typename Container,
+    uniform_generator Generator = std::mt19937,
+    typename Seed = unsigned int
+>
+Container generate_bool(
+    size_t count = 10,
+    Seed seed = std::random_device{}()
+) {
+    Container container;
+
+    if constexpr (requires { container.reserve(count); }) {
+        container.reserve(count);
+    }
+
+    Generator gen(seed);
+    auto dist = make_distribution();
+    fill_container(container, count, dist, gen);
+
+    return container;
+}
+
+/**
+ * @brief Generates a container of random values.
  * @tparam Container The container type.
  * @tparam Item Container item type (auto-inferred).
  * @tparam Generator Random engine for sequence generation.
@@ -308,8 +344,8 @@ inline auto make_distribution() {
  */
 template<
     typename Container,
-    Arithmetic Item = typename Container::value_type,
-    UniformGenerator Generator = std::mt19937,
+    rand_arithmetic Item = typename Container::value_type,
+    uniform_generator Generator = std::mt19937,
     typename Seed = unsigned int
 >
 Container generate(
@@ -325,38 +361,6 @@ Container generate(
 
     Generator gen(seed);
     auto dist = make_distribution(min, max);
-    fill_container(container, count, dist, gen);
-
-    return container;
-}
-
-/**
- * @brief Generates a container of integer values 0/1 with the given distribution and generator.
- * @note The default distribution does not support the `bool` type, so this template uses integral type.
- * @tparam Container The container type.
- * @tparam Generator Random engine for sequence generation.
- * @tparam Seed Unsigned integer type.
- * @param count Number of elements.
- * @param seed Initial seed value for the random number engine. Using the same seed allows reproducible results.
- * @return The filled container.
- */
-template<
-    typename Container,
-    UniformGenerator Generator = std::mt19937,
-    typename Seed = unsigned int
->
-    Container generate_bool(
-    size_t count = 10,
-    Seed seed = std::random_device{}()
-) {
-    Container container;
-
-    if constexpr (requires { container.reserve(count); }) {
-        container.reserve(count);
-    }
-
-    Generator gen(seed);
-    auto dist = make_distribution();
     fill_container(container, count, dist, gen);
 
     return container;
