@@ -263,41 +263,68 @@ template<integral T>
 class uniq_distribution {
  private:
     T min_val;
+    T max_val;
     T count;
     T max_count;
-    bool order;
+    T A;  // LCG multiplier: gcd(A, max_count) == 1
+    T B;  // shift
     bool seed_initialized;
+
+    T gcd(T a, T b) const {
+        while (b != 0) {
+            T temp = b;
+            b = a % b;
+            a = temp;
+        }
+        return a;
+    }
+
+    T find_coprime(T N) const {
+        if (N <= 1) return 1;
+        for (T a = 2; a < N; ++a) {
+            if (gcd(a, N) == 1) {
+                return a;
+            }
+        }
+        return 1;
+    }
 
  public:
     uniq_distribution(T min, T max)
-      : min_val(min), count(0),
-        max_count(max - min + 1),
-        order(false), seed_initialized(false) {}
+        : min_val(min), max_val(max),
+          count(0),
+          max_count(max - min + 1),
+          A(1), B(0),
+          seed_initialized(false) {}
 
-    template<std::uniform_random_bit_generator Generator>
+    template<uniform_generator Generator>
     T operator()(Generator& gen) {
-        if (!seed_initialized) {
-            std::uniform_int_distribution<T> dist;
-            order = dist(gen) & 1;
-            seed_initialized = true;
-        }
-
         if (max_count == 1) {
             return min_val;
         }
-        if (max_count == 2) {
-            return min_val + (order ^ (count++ & 1));
+
+        if (!seed_initialized) {
+            std::uniform_int_distribution<T> dist(
+                0, std::numeric_limits<T>::max()
+            );
+
+            B = dist(gen);
+            A = find_coprime(max_count);
+
+            if (A == 1 && max_count > 2) {
+                A = 2; // fallback
+
+                while (gcd(A, max_count) != 1 && A < max_count) {
+                    ++A;
+                }
+            }
+            seed_initialized = true;
         }
 
-        T x = count++;
-        x ^= static_cast<T>(order) * 31337;
-        x ^= x >> 16;
-        x *= 0x7feb352d;
-        x ^= x >> 15;
-        x *= 0x846ca68b;
-        x ^= x >> 16;
-
-        return min_val + (x % max_count);
+        // Generate the unique index: f(i) = (A * i + B) mod N
+        T index = (A * count + B) % max_count;
+        count++;
+        return min_val + index;
     }
 };
 
