@@ -3,7 +3,11 @@
 #define CATCH_CONFIG_MAIN
 #include <catch.hpp>
 #include <vector>
-using std::vector;
+
+using std::vector,
+      rnd::generate_bool,
+      rnd::generate_uniq,
+      rnd::generate;
 
 TEST_CASE("integers") {
     auto vec = generate<vector<int>>(5, 1, 10, 42);

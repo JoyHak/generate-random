@@ -29,6 +29,8 @@
 #include <concepts>
 #include <algorithm>
 
+namespace rnd {
+
 using std::integral, std::floating_point;
 
 template<typename Gen>
@@ -179,6 +181,8 @@ concept hash_map =
 
 // ── Fillers ──────────────────────────────────────────────────────────────────────────
 
+namespace detail {
+
 /**
  * @tparam Container array, ...
  */
@@ -316,6 +320,8 @@ inline size_t clamp_count(size_t count, Item, Item) {
     return count;
 }
 
+} // detail
+
 // ── Generators ───────────────────────────────────────────────────────────────────────
 
 /**
@@ -346,14 +352,14 @@ Container generate_uniq(
 ) {
     Container container;
 
-    count = clamp_count<Item>(count, min, max);
+    count = detail::clamp_count<Item>(count, min, max);
     if constexpr (requires { container.reserve(count); }) {
         container.reserve(count);
     }
 
     Generator gen(seed);
-    auto dist = make_sequential_distribution(min, max);
-    fill_container(container, count, dist, gen);
+    auto dist = detail::make_sequential_distribution(min, max);
+    detail::fill_container(container, count, dist, gen);
 
     if constexpr (!requires { typename Container::key_compare; }) {
         // Shuffle only unordered container
@@ -392,8 +398,8 @@ Container generate_uniq(
     }
 
     Generator gen(seed);
-    auto dist = make_distribution(min, max);
-    fill_container(container, count, dist, gen);
+    auto dist = detail::make_distribution(min, max);
+    detail::fill_container(container, count, dist, gen);
 
     return container;
 }
@@ -444,8 +450,8 @@ Container generate_bool(
     }
 
     Generator gen(seed);
-    auto dist = make_distribution();
-    fill_container(container, count, dist, gen);
+    auto dist = detail::make_distribution();
+    detail::fill_container(container, count, dist, gen);
 
     return container;
 }
@@ -496,6 +502,7 @@ template<
     uniform_generator Generator = std::mt19937,
     typename Seed = unsigned int
 >
+requires (!associative_container<Container>)
 Container generate(
     size_t count = 10,
     Item min = 1, Item max = 26,
@@ -508,9 +515,11 @@ Container generate(
     }
 
     Generator gen(seed);
-    auto dist = make_distribution(min, max);
-    fill_container(container, count, dist, gen);
+    auto dist = detail::make_distribution(min, max);
+    detail::fill_container(container, count, dist, gen);
 
     return container;
 }
+
+} // rand
 #endif  // GENERATE_HPP_

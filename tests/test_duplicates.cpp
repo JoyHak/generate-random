@@ -6,7 +6,13 @@
 #include <set>
 #include <unordered_set>
 #include <algorithm>
-using std::vector, std::set, std::unordered_set;
+
+using std::vector,
+      std::set,
+      std::unordered_set,
+      rnd::generate_bool,
+      rnd::generate_uniq,
+      rnd::generate;
 
 TEST_CASE("unordered_set, no duplicates") {
     auto uset = generate<unordered_set<int>>(50, 1, 1000, 42);

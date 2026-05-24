@@ -3,7 +3,11 @@
 #define CATCH_CONFIG_MAIN
 #include <catch.hpp>
 #include <list>
-using std::list;
+
+using std::list,
+      rnd::generate_bool,
+      rnd::generate_uniq,
+      rnd::generate;
 
 TEST_CASE("integer bools") {
     auto lst = generate_bool<list<int>>(6, 99);

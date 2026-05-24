@@ -3,7 +3,11 @@
 #define CATCH_CONFIG_MAIN
 #include <catch.hpp>
 #include <forward_list>
-using std::forward_list;
+
+using std::forward_list,
+      rnd::generate_bool,
+      rnd::generate_uniq,
+      rnd::generate;
 
 TEST_CASE("integers") {
     constexpr size_t size = 5;

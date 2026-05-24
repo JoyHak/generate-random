@@ -8,6 +8,9 @@
 #include <deque>
 #include <list>
 
+using rnd::generate_bool,
+      rnd::generate_uniq,
+      rnd::generate;
 
 TEST_CASE("integer containers")
 {

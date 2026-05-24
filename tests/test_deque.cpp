@@ -3,7 +3,11 @@
 #define CATCH_CONFIG_MAIN
 #include <catch.hpp>
 #include <deque>
-using std::deque;
+
+using std::deque,
+      rnd::generate_bool,
+      rnd::generate_uniq,
+      rnd::generate;
 
 TEST_CASE("integers") {
     auto vec = generate<deque<int>>(5, 1, 10, 42);

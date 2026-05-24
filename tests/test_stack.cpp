@@ -3,7 +3,11 @@
 #define CATCH_CONFIG_MAIN
 #include <catch.hpp>
 #include <stack>
-using std::stack;
+
+using std::stack,
+      rnd::generate_bool,
+      rnd::generate_uniq,
+      rnd::generate;
 
 TEST_CASE("integers on stack") {
     auto stk = generate<stack<int>>(5, 10, 20, 42);

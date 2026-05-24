@@ -3,7 +3,11 @@
 #define CATCH_CONFIG_MAIN
 #include <catch.hpp>
 #include <unordered_set>
-using std::unordered_set;
+
+using std::unordered_set,
+      rnd::generate_bool,
+      rnd::generate_uniq,
+      rnd::generate;
 
 TEST_CASE("integers") {
     constexpr size_t size = 5;
