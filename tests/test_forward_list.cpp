@@ -86,7 +86,7 @@ TEST_CASE("large integers") {
 }
 
 TEST_CASE("doubles, very large size") {
-    auto fwd = generate<std::forward_list<double>>(1'000'000, 0.001, 0.999, 67890);
+    auto fwd = generate<forward_list<double>>(1'000'000, 0.001, 0.999, 67890);
 
     for (double val : fwd) {
         REQUIRE(val >= 0.001);
