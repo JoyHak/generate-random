@@ -55,7 +55,7 @@ TEST_CASE("1 bool") {
     auto s = generate_bool<unordered_set<bool>>(1, 99);
 
     REQUIRE(s.size() == 1);
-    REQUIRE(s.contains(true));
+    REQUIRE(s.contains(false));
 }
 
 TEST_CASE("2 bools") {
@@ -84,7 +84,7 @@ TEST_CASE("full range [1,5]") {
     }
 }
 
-TEST_CASE("partial insert [10,20], count=5") {
+TEST_CASE("partial insert [10,20]") {
     auto s = generate<unordered_set<int>>(5, 10, 20, 123);
 
     REQUIRE(s.size() == 5);

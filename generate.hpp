@@ -27,7 +27,6 @@
 #define GENERATE_HPP_
 #include <random>
 #include <concepts>
-#include <algorithm>
 
 namespace rnd {
 
@@ -117,7 +116,7 @@ concept array = requires(Cont c, typename Cont::value_type v) {
  * Associative containers with unique values <i>(set, map, ...)</i>
  * will be generated differently than containers that support duplicates.
  * Since uniform distribution is not suitable for unique values due to high probability
- * of duplicating random values, we'll use <code>shuffle()</code> for containers with unique values
+ * of duplicating random values, we'll use custom distribution for containers with unique values
  * <i>(except for <code>multimap, multiset</code> etc., see below)</i><br><br>
  *
  * The <a href="https://eel.is/c++draft/associative.reqmts">standart</a> does not describe
@@ -178,6 +177,9 @@ concept hash_map =
         typename Cont::key_compare;
         typename Cont::mapped_type;
     };
+
+template<typename Cont>
+concept reversible_container = !associative_container<Cont>;
 
 // ── Fillers ──────────────────────────────────────────────────────────────────────────
 
@@ -258,22 +260,50 @@ inline void fill_container(Container& container, size_t count, Distribution& dis
 // ── Distributions ────────────────────────────────────────────────────────────────────
 
 template<integral T>
-struct sequential_distribution {
-    T current;
-    T max;
+class uniq_distribution {
+ private:
+    T min_val;
+    T count;
+    T max_count;
+    bool order;
+    bool seed_initialized;
 
-    sequential_distribution(T min, T max)
-        : current(min), max(max) {}
+ public:
+    uniq_distribution(T min, T max)
+      : min_val(min), count(0),
+        max_count(max - min + 1),
+        order(false), seed_initialized(false) {}
 
-    template<typename Generator>
-    T operator()(Generator& /* gen */) {
-        return current < max ? current++ : max;
+    template<std::uniform_random_bit_generator Generator>
+    T operator()(Generator& gen) {
+        if (!seed_initialized) {
+            std::uniform_int_distribution<T> dist;
+            order = dist(gen) & 1;
+            seed_initialized = true;
+        }
+
+        if (max_count == 1) {
+            return min_val;
+        }
+        if (max_count == 2) {
+            return min_val + (order ^ (count++ & 1));
+        }
+
+        T x = count++;
+        x ^= static_cast<T>(order) * 31337;
+        x ^= x >> 16;
+        x *= 0x7feb352d;
+        x ^= x >> 15;
+        x *= 0x846ca68b;
+        x ^= x >> 16;
+
+        return min_val + (x % max_count);
     }
 };
 
 template<integral Item>
-inline auto make_sequential_distribution(Item min, Item max) {
-    return sequential_distribution<Item>(min, max);
+inline auto make_uniq_distribution(Item min, Item max) {
+    return uniq_distribution<Item>(min, max);
 }
 
 template<rand_integer Item>
@@ -358,13 +388,9 @@ Container generate_uniq(
     }
 
     Generator gen(seed);
-    auto dist = detail::make_sequential_distribution(min, max);
+    auto dist = detail::make_uniq_distribution(min, max);
     detail::fill_container(container, count, dist, gen);
 
-    if constexpr (!requires { typename Container::key_compare; }) {
-        // Shuffle only unordered container
-        std::shuffle(container.begin(), container.end(), gen);
-    }
     return container;
 }
 
@@ -404,25 +430,6 @@ Container generate_uniq(
     return container;
 }
 
-template<
-    associative_container Container,
-    uniform_generator Generator = std::mt19937,
-    typename Seed = unsigned int
->
-Container generate_bool(
-    size_t /* count */,
-    Seed seed = std::random_device{}()
-) {
-    Container container{0, 1};
-
-    if constexpr (!requires { typename Container::key_compare; }) {
-        // Shuffle only unordered container
-        Generator gen(seed);
-        std::shuffle(container.begin(), container.end(), gen);
-    }
-    return container;
-}
-
 /**
  * @brief Generates a container of random boolean values.
  * Allows any type of container element that can be cast to 0 or 1.
@@ -435,7 +442,7 @@ Container generate_bool(
  * @return The filled container.
  */
 template<
-    typename Container,
+    reversible_container Container,
     uniform_generator Generator = std::mt19937,
     typename Seed = unsigned int
 >
@@ -456,32 +463,38 @@ Container generate_bool(
     return container;
 }
 
+/**
+ * @brief Generates an associative container of random boolean values.
+ * @note The default distribution does not support the `bool` type, so this template uses integral type.
+ * @tparam Container The container type.
+ * @tparam Generator Random engine for sequence generation.
+ * @tparam Seed Unsigned integer type.
+ * @param count Size limit (1-2).
+ * @param seed Initial seed value to mix booleans oreder (0, 1) or (1, 0).
+ * @return The filled container.
+ */
 template<
     associative_container Container,
-    typename Item = typename Container::value_type,
     uniform_generator Generator = std::mt19937,
     typename Seed = unsigned int
 >
-Container generate(
-    size_t count = 10,
-    Item min = 1, Item max = 26,
+Container generate_bool(
+    size_t count,
     Seed seed = std::random_device{}()
 ) {
-    return generate_uniq<Container, Item, Generator, Seed>(count, min, max, seed);
-}
+    Container container;
 
-template<
-    typename Container,
-    boolean Item = typename Container::value_type,
-    uniform_generator Generator = std::mt19937,
-    typename Seed = unsigned int
->
-Container generate(
-    size_t count = 10,
-    Item min = 1, Item max = 26,
-    Seed seed = std::random_device{}()
-) {
-    return generate_bool<Container, Generator, Seed>(count, seed);
+    Generator gen(seed);
+    auto dist = detail::make_distribution();
+
+    bool value = dist(gen);
+    container.insert(value);
+
+    if (count > 1) {
+        container.insert(value == true ? false : true);
+    }
+
+    return container;
 }
 
 /**
@@ -497,12 +510,11 @@ Container generate(
  * @return The filled container.
  */
 template<
-    typename Container,
+    reversible_container Container,
     rand_arithmetic Item = typename Container::value_type,
     uniform_generator Generator = std::mt19937,
     typename Seed = unsigned int
 >
-requires (!associative_container<Container>)
 Container generate(
     size_t count = 10,
     Item min = 1, Item max = 26,
@@ -519,6 +531,34 @@ Container generate(
     detail::fill_container(container, count, dist, gen);
 
     return container;
+}
+
+template<
+    reversible_container Container,
+    boolean Item = typename Container::value_type,
+    uniform_generator Generator = std::mt19937,
+    typename Seed = unsigned int
+>
+Container generate(
+    size_t count = 10,
+    Item min = 1, Item max = 26,
+    Seed seed = std::random_device{}()
+) {
+    return generate_bool<Container, Generator, Seed>(count, seed);
+}
+
+template<
+    associative_container Container,
+    typename Item = typename Container::value_type,
+    uniform_generator Generator = std::mt19937,
+    typename Seed = unsigned int
+>
+Container generate(
+    size_t count = 10,
+    Item min = 1, Item max = 26,
+    Seed seed = std::random_device{}()
+) {
+    return generate_uniq<Container, Item, Generator, Seed>(count, min, max, seed);
 }
 
 } // rand
