@@ -6,7 +6,7 @@
 
 TEST_CASE("collisions across random seeds", "[uniq_distribution][stress]") {
     using T = int;  // can be changed to short, long, etc.
-    using uniq = rnd::detail::uniq_distribution<T>;
+    using uniq = rnd::detail::uniq_int_distribution<T>;
     using engine = std::mt19937;
     using set = std::unordered_set<T>;
 
@@ -48,7 +48,7 @@ TEST_CASE("collisions across random seeds", "[uniq_distribution][stress]") {
 
 TEST_CASE("edge cases: small ranges", "[uniq_distribution][edge]") {
     using T = int;
-    using uniq = rnd::detail::uniq_distribution<T>;
+    using uniq = rnd::detail::uniq_int_distribution<T>;
     using engine = std::mt19937;
     using set = std::unordered_set<T>;
 
