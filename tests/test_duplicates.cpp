@@ -22,11 +22,21 @@ TEST_CASE("vector, no duplicates") {
     std::sort(vec.begin(), vec.end());
     auto it = std::adjacent_find(vec.begin(), vec.end());
     REQUIRE(it == vec.end());
+    REQUIRE(vec.size() == 10);
 }
 
 TEST_CASE("vector, full range [1,5]") {
     auto vec = generate_uniq<vector<int>>(20, 1, 5);
     REQUIRE(vec.size() == 5);
+}
+
+TEST_CASE("vector of floats") {
+    auto vec = generate_uniq<vector<float>>(10, 0.23f, 10.23f);
+
+    std::sort(vec.begin(), vec.end());
+    auto it = std::adjacent_find(vec.begin(), vec.end());
+    REQUIRE(it == vec.end());
+    REQUIRE(vec.size() == 10);
 }
 
 TEST_CASE("deque, no duplicates") {
@@ -52,6 +62,11 @@ TEST_CASE("deque, detect manually") {
     REQUIRE(deq.size() == 8);
 }
 
+TEST_CASE("deque of floats") {
+    auto deq = generate_uniq<deque<float>>(15, 10.11f, 50.45f);
+    REQUIRE(deq.size() == 15);
+}
+
 TEST_CASE("list, no duplicates") {
     auto lst = generate_uniq<list<int>>(12, 1, 20, 54321);
 
@@ -67,7 +82,6 @@ TEST_CASE("list, sorted ascending") {
     vector<int> vec(lst.begin(), lst.end());
     std::sort(vec.begin(), vec.end());
 
-    // Правильная проверка: только на отсутствие дубликатов
     auto it = std::adjacent_find(vec.begin(), vec.end());
     REQUIRE(it == vec.end());
 }
@@ -80,6 +94,7 @@ TEST_CASE("unordered_set, no duplicates") {
 
     auto it = std::adjacent_find(vec.begin(), vec.end());
     REQUIRE(it == vec.end());
+    REQUIRE(uset.size() == 50);
 }
 
 TEST_CASE("unordered_set, detect manually") {
@@ -97,6 +112,11 @@ TEST_CASE("unordered_set, detect manually") {
     }
 
     REQUIRE_FALSE(has_duplicates);
+}
+
+TEST_CASE("unordered_set of floats") {
+    auto deq = generate_uniq<unordered_set<float>>(15, 10.0f, 25.0f);
+    REQUIRE(deq.size() == 15);
 }
 
 TEST_CASE("set, no duplicates") {
@@ -118,4 +138,9 @@ TEST_CASE("set, full range [1,10]") {
     for (int val : s) {
         REQUIRE(val == expected++);
     }
+}
+
+TEST_CASE("set of floats") {
+    auto s = generate_uniq<set<float>>(15, 10.0f, 25.0f);
+    REQUIRE(s.size() == 15);
 }
