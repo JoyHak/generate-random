@@ -528,28 +528,28 @@ Container generate_uniq(
     Item min = 1, Item max = 26,
     Seed seed = std::random_device{}()
 ) {
-    // generate_bool() performs faster for [0, 1] range
     if constexpr (boolean<Item> || boolean<typename Container::value_type>) {
-        return generate_bool<Container, Generator, Seed>(count, seed);
-    }
-    if constexpr (integral<Item>) {
-        if (min == 0 && max <= 1) {
-            return generate_bool<Container, Generator, Seed>(count, seed);
+        return generate_bool<Container, Generator, Seed>(2, seed);
+    } else {
+        if constexpr (integral<Item>) {
+            if (min == 0 && max <= 1) {
+                return generate_bool<Container, Generator, Seed>(2, seed);
+            }
         }
+
+        Container container;
+
+        count = detail::clamp_count<Item>(count, min, max);
+        if constexpr (requires { container.reserve(count); }) {
+            container.reserve(count);
+        }
+
+        Generator gen(seed);
+        auto dist = detail::make_uniq_distribution(min, max);
+        detail::fill_container(container, count, dist, gen);
+
+        return container;
     }
-
-    Container container;
-
-    count = detail::clamp_count<Item>(count, min, max);
-    if constexpr (requires { container.reserve(count); }) {
-        container.reserve(count);
-    }
-
-    Generator gen(seed);
-    auto dist = detail::make_uniq_distribution(min, max);
-    detail::fill_container(container, count, dist, gen);
-
-    return container;
 }
 
 /**
@@ -578,23 +578,24 @@ Container generate(
     // uniform distribution below is inefficient for [0, 1] range
     if constexpr (boolean<Item> || boolean<typename Container::value_type>) {
         return generate_bool<Container, Generator, Seed>(count, seed);
-    }
-    if constexpr (integral<Item>) {
-        if (min == 0 && max <= 1) {
-            return generate_bool<Container, Generator, Seed>(count, seed);
+    } else {
+        if constexpr (integral<Item>) {
+            if (min == 0 && max <= 1) {
+                return generate_bool<Container, Generator, Seed>(count, seed);
+            }
         }
+
+        Container container;
+        if constexpr (requires { container.reserve(count); }) {
+            container.reserve(count);
+        }
+
+        Generator gen(seed);
+        auto dist = detail::make_distribution(min, max);
+        detail::fill_container(container, count, dist, gen);
+
+        return container;
     }
-
-    Container container;
-    if constexpr (requires { container.reserve(count); }) {
-        container.reserve(count);
-    }
-
-    Generator gen(seed);
-    auto dist = detail::make_distribution(min, max);
-    detail::fill_container(container, count, dist, gen);
-
-    return container;
 }
 
 template<
