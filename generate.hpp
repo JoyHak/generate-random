@@ -295,6 +295,34 @@ inline void fill_container(Container& container, size_t count, Distribution& dis
 //endregion
 
 //region distributions
+template<typename T>
+using limits = std::numeric_limits<T>;
+
+template<boolean Item>
+inline auto make_distribution(Item min = false, Item max = true) {
+    return std::uniform_int_distribution<short>((short)min, (short)max);
+}
+
+template<character Item>
+inline auto make_distribution(Item min = 0, Item max = limits<Item>::max()) {
+    return std::uniform_int_distribution<short>((short)min, (short)max);
+}
+
+template<rand_integer Item>
+inline auto make_distribution(Item min = 0, Item max = limits<Item>::max()) {
+    return std::uniform_int_distribution<Item>(min, max);
+}
+
+template<rand_floating Item>
+inline auto make_distribution(Item min = 0, Item max = limits<Item>::max()) {
+    return std::uniform_real_distribution<Item>(min, max);
+}
+
+inline auto make_distribution() {
+    // 50% true, 50% false
+    return std::bernoulli_distribution(0.5);
+}
+
 template<integral T>
 class uniq_int_distribution {
  private:
@@ -340,9 +368,7 @@ class uniq_int_distribution {
         }
 
         if (!seed_initialized) {
-            std::uniform_int_distribution<T> dist(
-                0, std::numeric_limits<T>::max()
-            );
+            auto dist = make_distribution<T>(0, limits<T>::max());
 
             B = dist(gen);
             A = find_coprime(max_count);
@@ -364,9 +390,6 @@ class uniq_int_distribution {
     }
 };
 
-template<typename T>
-using limits = std::numeric_limits<T>;
-
 template<integral Item>
 inline auto make_uniq_distribution(Item min = 0, Item max = limits<Item>::max()) {
     return uniq_int_distribution<Item>(min, max);
@@ -375,31 +398,6 @@ inline auto make_uniq_distribution(Item min = 0, Item max = limits<Item>::max())
 template<floating_point Item>
 inline auto make_uniq_distribution(Item min = 0, Item max = limits<Item>::max()) {
     return std::uniform_real_distribution<Item>(min, max);
-}
-
-template<boolean Item>
-inline auto make_distribution(Item min = false, Item max = true) {
-    return std::uniform_int_distribution<short>((short)min, (short)max);
-}
-
-template<character Item>
-inline auto make_distribution(Item min = 0, Item max = limits<Item>::max()) {
-    return std::uniform_int_distribution<short>((short)min, (short)max);
-}
-
-template<rand_integer Item>
-inline auto make_distribution(Item min = 0, Item max = limits<Item>::max()) {
-    return std::uniform_int_distribution<Item>(min, max);
-}
-
-template<rand_floating Item>
-inline auto make_distribution(Item min = 0, Item max = limits<Item>::max()) {
-    return std::uniform_real_distribution<Item>(min, max);
-}
-
-inline auto make_distribution() {
-    // 50% true, 50% false
-    return std::bernoulli_distribution(0.5);
 }
 //endregion
 
