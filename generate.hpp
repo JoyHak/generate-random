@@ -213,9 +213,6 @@ concept hash_map =
         typename Cont::key_compare;
         typename Cont::mapped_type;
     };
-
-template<typename Cont>
-concept reversible_container = !associative_container<Cont>;
 //endregion
 
 namespace detail {
@@ -436,39 +433,6 @@ inline size_t clamp_count(size_t count, Item, Item) {
 
 //region generators
 /**
- * @brief Generates a container of random boolean values.
- * Allows any type of container element that can be cast to 0 or 1.
- * @note The default distribution does not support the `bool` type, so this template uses integral type.
- * @tparam Container The container type.
- * @tparam Generator Random engine for sequence generation.
- * @tparam Seed Unsigned integer type.
- * @param count Number of elements.
- * @param seed Initial seed value for the random number engine. Using the same seed allows reproducible results.
- * @return The filled container.
- */
-template<
-    reversible_container Container,
-    uniform_generator Generator = std::mt19937,
-    typename Seed = unsigned int
->
-Container generate_bool(
-    size_t count = 10,
-    Seed seed = std::random_device{}()
-) {
-    Container container;
-
-    if constexpr (requires { container.reserve(count); }) {
-        container.reserve(count);
-    }
-
-    Generator gen(seed);
-    auto dist = detail::make_distribution();
-    detail::fill_container(container, count, dist, gen);
-
-    return container;
-}
-
-/**
  * @brief Generates an associative container of random boolean values.
  * @note The default distribution does not support the `bool` type, so this template uses integral type.
  * @tparam Container The container type.
@@ -498,6 +462,39 @@ Container generate_bool(
     if (count > 1) {
         container.insert(value == true ? false : true);
     }
+
+    return container;
+}
+
+/**
+ * @brief Generates a container of random boolean values.
+ * Allows any type of container element that can be cast to 0 or 1.
+ * @note The default distribution does not support the `bool` type, so this template uses integral type.
+ * @tparam Container The container type.
+ * @tparam Generator Random engine for sequence generation.
+ * @tparam Seed Unsigned integer type.
+ * @param count Number of elements.
+ * @param seed Initial seed value for the random number engine. Using the same seed allows reproducible results.
+ * @return The filled container.
+ */
+template<
+    typename Container,
+    uniform_generator Generator = std::mt19937,
+    typename Seed = unsigned int
+>
+Container generate_bool(
+    size_t count = 10,
+    Seed seed = std::random_device{}()
+) {
+    Container container;
+
+    if constexpr (requires { container.reserve(count); }) {
+        container.reserve(count);
+    }
+
+    Generator gen(seed);
+    auto dist = detail::make_distribution();
+    detail::fill_container(container, count, dist, gen);
 
     return container;
 }
@@ -552,6 +549,20 @@ Container generate_uniq(
     }
 }
 
+template<
+    associative_container Container,
+    arithmetic Item = typename Container::value_type,
+    uniform_generator Generator = std::mt19937,
+    typename Seed = unsigned int
+>
+Container generate(
+    size_t count = 10,
+    Item min = 1, Item max = 26,
+    Seed seed = std::random_device{}()
+) {
+    return generate_uniq<Container, Item, Generator, Seed>(count, min, max, seed);
+}
+
 /**
  * @brief Generates a container of random values.
  * @tparam Container The container type.
@@ -565,7 +576,7 @@ Container generate_uniq(
  * @return The filled container.
  */
 template<
-    reversible_container Container,
+    typename Container,
     arithmetic Item = typename Container::value_type,
     uniform_generator Generator = std::mt19937,
     typename Seed = unsigned int
@@ -596,20 +607,6 @@ Container generate(
 
         return container;
     }
-}
-
-template<
-    associative_container Container,
-    arithmetic Item = typename Container::value_type,
-    uniform_generator Generator = std::mt19937,
-    typename Seed = unsigned int
->
-Container generate(
-    size_t count = 10,
-    Item min = 1, Item max = 26,
-    Seed seed = std::random_device{}()
-) {
-    return generate_uniq<Container, Item, Generator, Seed>(count, min, max, seed);
 }
 //endregion generators
 
