@@ -209,7 +209,7 @@ concept hash_table =
 template<typename Cont>
 concept hash_map =
     associative_container<Cont>
-    && requires {
+ && requires {
         typename Cont::key_compare;
         typename Cont::mapped_type;
     };
@@ -295,24 +295,24 @@ inline void fill_container(Container& container, size_t count, Distribution& dis
 template<typename T>
 using limits = std::numeric_limits<T>;
 
-template<boolean Item>
-inline auto make_distribution(Item min = false, Item max = true) {
+template<boolean T>
+inline auto make_distribution(T min = false, T max = true) {
     return std::uniform_int_distribution<short>((short)min, (short)max);
 }
 
-template<character Item>
-inline auto make_distribution(Item min = 0, Item max = limits<Item>::max()) {
+template<character T>
+inline auto make_distribution(T min = 0, T max = limits<T>::max()) {
     return std::uniform_int_distribution<short>((short)min, (short)max);
 }
 
-template<rand_integer Item>
-inline auto make_distribution(Item min = 0, Item max = limits<Item>::max()) {
-    return std::uniform_int_distribution<Item>(min, max);
+template<rand_integer T>
+inline auto make_distribution(T min = 0, T max = limits<T>::max()) {
+    return std::uniform_int_distribution<T>(min, max);
 }
 
-template<rand_floating Item>
-inline auto make_distribution(Item min = 0, Item max = limits<Item>::max()) {
-    return std::uniform_real_distribution<Item>(min, max);
+template<rand_floating T>
+inline auto make_distribution(T min = 0, T max = limits<T>::max()) {
+    return std::uniform_real_distribution<T>(min, max);
 }
 
 inline auto make_distribution() {
@@ -341,7 +341,9 @@ class uniq_int_distribution {
     }
 
     T find_coprime(T N) const {
-        if (N <= 1) return 1;
+        if (N <= 1)
+            return 1;
+
         for (T a = 2; a < N; ++a) {
             if (gcd(a, N) == 1) {
                 return a;
@@ -361,7 +363,21 @@ class uniq_int_distribution {
     template<uniform_generator Generator>
     T operator()(Generator& gen) {
         if (max_count == 1) {
+            // One possible value
             return min_val;
+        }
+
+        if (max_count == 2) {
+            // Generate random value in [min, min+1] range
+            if (!seed_initialized) {
+                auto dist = make_distribution<T>(min_val, max_val);
+                B = dist(gen);
+                seed_initialized = true;
+
+                return B;
+            }
+
+            return B == max_val ? min_val : max_val;
         }
 
         if (!seed_initialized) {
@@ -370,8 +386,8 @@ class uniq_int_distribution {
             B = dist(gen);
             A = find_coprime(max_count);
 
-            if (A == 1 && max_count > 2) {
-                A = 2; // fallback
+            if (A == 1) {
+                A = 2;  // fallback
 
                 while (gcd(A, max_count) != 1 && A < max_count) {
                     ++A;
@@ -380,53 +396,41 @@ class uniq_int_distribution {
             seed_initialized = true;
         }
 
-        // Generate the unique index: f(i) = (A * i + B) mod N
+        // Generate the unique index
         T index = (A * count + B) % max_count;
-        count++;
+        ++count;
         return min_val + index;
     }
 };
 
-template<integral Item>
-inline auto make_uniq_distribution(Item min = 0, Item max = limits<Item>::max()) {
-    return uniq_int_distribution<Item>(min, max);
+template<integral T>
+inline auto make_uniq_distribution(T min = 0, T max = limits<T>::max()) {
+    return uniq_int_distribution<T>(min, max);
 }
 
-template<floating_point Item>
-inline auto make_uniq_distribution(Item min = 0, Item max = limits<Item>::max()) {
-    return std::uniform_real_distribution<Item>(min, max);
+template<floating_point T>
+inline auto make_uniq_distribution(T min = 0, T max = limits<T>::max()) {
+    return std::uniform_real_distribution<T>(min, max);
 }
 //endregion
 
 //region helpers
+template<integral T>
+inline size_t clamp_count(const size_t& count, T min = 1, T max = 26) {
+    const uint64_t min_val = static_cast<uint64_t>(min);
+    const uint64_t max_val = static_cast<uint64_t>(max);
+    const uint64_t total_unique = max_val - min_val + 1;
 
-/**
- * Limits the count of elements generated in a container if the upper bound `max` is lower than `count`.
- * @tparam Item The type of element in the container to be generated.
- * The function requires support for comparison and subtraction operations,
- * so it only works with <i>int</i> types.
- * @param count Number of elements to generate.
- * @param min Minimum value.
- * @param max Maximum value.
- */
-template<integral Item>
-inline size_t clamp_count(size_t count, Item min = 1, Item max = 26) {
-    uint64_t min_val = static_cast<uint64_t>(min);
-    uint64_t max_val = static_cast<uint64_t>(max);
-    uint64_t total_unique = max_val - min_val + 1;
-
-    if (count >= total_unique) {
-        count = static_cast<size_t>(total_unique);
-    }
+    if (count >= total_unique)
+        return total_unique;
 
     return count;
 }
 
-template<typename Item>
-inline size_t clamp_count(size_t count, Item, Item) {
+template<typename T>
+inline size_t clamp_count(const size_t& count, T, T) {
     return count;
 }
-
 //endregion
 
 } // namespace detail
@@ -434,12 +438,16 @@ inline size_t clamp_count(size_t count, Item, Item) {
 //region generators
 /**
  * @brief Generates an associative container of random boolean values.
- * @note The default distribution does not support the `bool` type, so this template uses integral type.
- * @tparam Container The container type.
+ * @note It is guaranteed that the size of the generated container will be
+ * equal to `count`: 0, 1 or 2.
+ * If count > 2 it will be clamped to 2.
+ * If the container is ordered like `set`, the result will always be {0} or {0, 1}.
+ * @tparam Container The container type. Items type can be <i>any type</i> that can be cast to 0 or 1:
+ * <code>vector<int>, set<size_t>, ...</code>
  * @tparam Generator Random engine for sequence generation.
  * @tparam Seed Unsigned integer type.
  * @param count Size limit (1-2).
- * @param seed Initial seed value to mix booleans oreder (0, 1) or (1, 0).
+ * @param seed Initial seed value to mix booleans order.
  * @return The filled container.
  */
 template<
@@ -460,7 +468,7 @@ Container generate_bool(
     container.insert(value);
 
     if (count > 1) {
-        container.insert(value == true ? false : true);
+        container.insert(!value);
     }
 
     return container;
@@ -468,9 +476,8 @@ Container generate_bool(
 
 /**
  * @brief Generates a container of random boolean values.
- * Allows any type of container element that can be cast to 0 or 1.
- * @note The default distribution does not support the `bool` type, so this template uses integral type.
- * @tparam Container The container type.
+ * @tparam Container The container type. Items type can be <i>any type</i> that can be cast to 0 or 1:
+ * <code>vector<int>, set<size_t>, ...</code>
  * @tparam Generator Random engine for sequence generation.
  * @tparam Seed Unsigned integer type.
  * @param count Number of elements.
@@ -500,12 +507,12 @@ Container generate_bool(
 }
 
 /**
- * @brief Generates a container of unique random integer values.
+ * @brief Generates a container of unique random values.
  * @remark <code>set, unordered_set, map, unordered_map</code> and other similar assoc. containers excludes duplicates.
- * If the generated value already exists, <strong>it will not be added!</strong><br><br>
- * If count > max, the final container size will be max - min + 1. Otherwise it will be equal to count.
+ * If the generated value already exists, it will not be added!<br><br>
+ * If count > max, the final container size will be max - min + 1. Otherwise it will be equal to `count`.
  * @tparam Container The container type.
- * @tparam Item Integer container item type (auto-inferred).
+ * @tparam Item Numeric/character container item type (auto-inferred).
  * @tparam Generator Random engine for sequence generation.
  * @tparam Seed Unsigned integer type.
  * @param count Number of elements.
@@ -542,7 +549,7 @@ Container generate_uniq(
         }
 
         Generator gen(seed);
-        auto dist = detail::make_uniq_distribution(min, max);
+        auto dist = detail::make_uniq_distribution<Item>(min, max);
         detail::fill_container(container, count, dist, gen);
 
         return container;
@@ -566,7 +573,7 @@ Container generate(
 /**
  * @brief Generates a container of random values.
  * @tparam Container The container type.
- * @tparam Item Container item type (auto-inferred).
+ * @tparam Item Numeric/character container item type (auto-inferred).
  * @tparam Generator Random engine for sequence generation.
  * @tparam Seed Unsigned integer type.
  * @param count Number of elements.
@@ -602,7 +609,7 @@ Container generate(
         }
 
         Generator gen(seed);
-        auto dist = detail::make_distribution(min, max);
+        auto dist = detail::make_distribution<Item>(min, max);
         detail::fill_container(container, count, dist, gen);
 
         return container;
