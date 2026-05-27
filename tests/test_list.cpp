@@ -22,8 +22,8 @@ TEST_CASE("pure bools") {
     auto lst = generate_bool<list<bool>>(6, 99);
 
     REQUIRE(lst.size() == 6);
-    for (int val : lst) {
-        REQUIRE((val == 0 || val == 1));
+    for (bool val : lst) {
+        REQUIRE((val == true || val == false));
     }
 }
 
