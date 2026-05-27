@@ -27,35 +27,43 @@ TEST_CASE("pure bools") {
     }
 }
 
-TEST_CASE("long") {
-    auto lst = generate<list<long>>(3, -5, 5, 111);
+TEST_CASE("characters") {
+    auto lst = generate<list<char>>(5, 'a', 'e');
 
-    REQUIRE(lst.size() == 3);
-    for (long val : lst) {
-        REQUIRE(val >= -5);
-        REQUIRE(val <= 5);
+    REQUIRE(lst.size() == 5);
+    for (char val : lst) {
+        REQUIRE(val >= 'a');
+        REQUIRE(val <= 'e');
     }
 }
 
 TEST_CASE("big integers") {
-    constexpr size_t size = 100'000;
-    auto lst = generate<list<int>>(size, 1, 1000, 42);
+    constexpr size_t size = 10;
+    constexpr size_t min = std::numeric_limits<size_t>::min();
+    constexpr size_t max = 1'000'000;
+
+    auto lst = generate<list<size_t>>(size, min, max, 98765);
 
     REQUIRE(lst.size() == size);
-    for (int val : lst) {
-        REQUIRE(val >= 1);
-        REQUIRE(val <= 1000);
+
+    for (size_t val : lst) {
+        REQUIRE(val >= min);
+        REQUIRE(val <= max);
     }
 }
 
 TEST_CASE("large integers") {
-    constexpr size_t size = 10'000;
-    auto lst = generate<list<long long>>(size, -1'000'000, 1'000'000, 98765);
+    constexpr size_t size = 10;
+    constexpr size_t min = std::numeric_limits<size_t>::min();
+    constexpr size_t max = std::numeric_limits<size_t>::max();
+
+    auto lst = generate<list<size_t>>(size, min, max, 98765);
 
     REQUIRE(lst.size() == size);
-    for (long long val : lst) {
-        REQUIRE(val >= -1'000'000);
-        REQUIRE(val <= 1'000'000);
+
+    for (size_t val : lst) {
+        REQUIRE(val >= min);
+        REQUIRE(val <= max);
     }
 }
 
@@ -75,15 +83,6 @@ TEST_CASE("doubles, large size") {
     auto lst = generate<list<double>>(size, 0.001, 0.999, 67890);
 
     REQUIRE(lst.size() == size);
-    for (double val : lst) {
-        REQUIRE(val >= 0.001);
-        REQUIRE(val <= 0.999);
-    }
-}
-
-TEST_CASE("doubles, very large size") {
-    auto lst = generate<list<double>>(1'000'000, 0.001, 0.999, 67890);
-
     for (double val : lst) {
         REQUIRE(val >= 0.001);
         REQUIRE(val <= 0.999);

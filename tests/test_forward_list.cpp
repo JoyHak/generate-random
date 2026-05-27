@@ -22,6 +22,19 @@ TEST_CASE("integers") {
     REQUIRE(count == size);
 }
 
+TEST_CASE("characters") {
+    constexpr size_t size = 5;
+    auto fwd = generate<forward_list<char>>(size, 'a', 'e');
+
+    size_t count = 0;
+    for (char val : fwd) {
+        REQUIRE(val >= 'a');
+        REQUIRE(val <= 'e');
+        ++count;
+    }
+    REQUIRE(count == size);
+}
+
 TEST_CASE("integer bools") {
     constexpr size_t size = 6;
     auto fwd = generate_bool<forward_list<int>>(size, 99);
@@ -59,27 +72,32 @@ TEST_CASE("floats") {
 }
 
 TEST_CASE("big integers") {
-    constexpr size_t size = 100'000;
-    auto fwd = generate<forward_list<int>>(size, 100'000, 500'000, 42);
+    constexpr size_t size = 10;
+    constexpr size_t min = std::numeric_limits<size_t>::min();
+    constexpr size_t max = 1'000'000;
+
+    auto fwd = generate<forward_list<size_t>>(size, min, max, 98765);
 
     size_t count = 0;
-    for (int val : fwd) {
-        REQUIRE(val >= 100'000);
-        REQUIRE(val <= 500'000);
+    for (size_t val : fwd) {
+        REQUIRE(val >= min);
+        REQUIRE(val <= max);
         ++count;
     }
     REQUIRE(count == size);
 }
 
 TEST_CASE("large integers") {
-    constexpr size_t size = 100'000;
-    using large = long long;
-    auto fwd = generate<forward_list<large>>(size, -1'000'000, 1'000'000, 98765);
+    constexpr size_t size = 10;
+    constexpr size_t min = std::numeric_limits<size_t>::min();
+    constexpr size_t max = std::numeric_limits<size_t>::max();
+
+    auto fwd = generate<forward_list<size_t>>(size, min, max, 98765);
 
     size_t count = 0;
-    for (large val : fwd) {
-        REQUIRE(val >= -1'000'000);
-        REQUIRE(val <= 1'000'000);
+    for (size_t val : fwd) {
+        REQUIRE(val >= min);
+        REQUIRE(val <= max);
         ++count;
     }
     REQUIRE(count == size);

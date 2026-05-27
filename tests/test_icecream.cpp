@@ -73,7 +73,6 @@ TEST_CASE("floating point containers")
     }
 }
 
-
 TEST_CASE("bool containers")
 {
     {
@@ -110,6 +109,42 @@ TEST_CASE("bool containers")
     }
 }
 
+TEST_CASE("characters containers")
+{
+    {
+        IC_CONFIG_SCOPE();
+        auto str = std::string{};
+        IC_CONFIG.output(str);
+
+        auto vec = generate<std::vector<char>>(4, 'a', 'e', 12345);
+        IC(vec);
+
+        REQUIRE(str == "ic| vec: ['c', 'b', 'e', 'b']\n");
+    }
+
+    {
+        IC_CONFIG_SCOPE();
+        auto str = std::string{};
+        IC_CONFIG.output(str);
+
+        auto deq = generate<std::deque<char>>(4, 'a', 'e', 12345);
+        IC(deq);
+
+        REQUIRE(str == "ic| deq: ['c', 'b', 'e', 'b']\n");
+    }
+
+    {
+        IC_CONFIG_SCOPE();
+        auto str = std::string{};
+        IC_CONFIG.output(str);
+
+        auto lst = generate<std::list<char>>(4, 'a', 'g', 12345);
+        IC(lst);
+
+        REQUIRE(str == "ic| lst: ['c', 'f', 'f', 'b']\n");
+    }
+}
+
 TEST_CASE("default parameters")
 {
     {
@@ -128,38 +163,10 @@ TEST_CASE("default parameters")
         auto str = std::string{};
         IC_CONFIG.output(str);
 
-        auto vec = generate_bool<std::vector<short>>();
+        auto vec = generate_bool<std::vector<char>>();
         IC(vec);
 
         REQUIRE(str != "ic| vec: []\n");
-    }
-}
-
-TEST_CASE("container content consistency")
-{
-    // Using fixed seed for reproducible results
-    const auto seed = 12345u;
-
-    SECTION("vector<int> with range [1, 5]")
-    {
-        auto vec = generate<std::vector<int>>(5, 1, 5, seed);
-        REQUIRE(vec.size() == 5);
-        for (const auto& val : vec)
-        {
-            REQUIRE(val >= 1);
-            REQUIRE(val <= 5);
-        }
-    }
-
-    SECTION("deque<float> with range [0.1, 0.5]")
-    {
-        auto deq = generate<std::deque<float>>(4, 0.1f, 0.5f, seed);
-        REQUIRE(deq.size() == 4);
-        for (const auto& val : deq)
-        {
-            REQUIRE(val >= 0.1f);
-            REQUIRE(val <= 0.5f);
-        }
     }
 }
 

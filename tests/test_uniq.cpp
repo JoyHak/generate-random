@@ -61,13 +61,13 @@ TEST_CASE("edge cases: small ranges", "[uniq_distribution][edge]") {
         REQUIRE(s.size() == 2);
     }
 
-    SECTION("Range [5, 5]") {
-        uniq dist(5, 5);
+    SECTION("Range [-1, 0]") {
+        uniq dist(-1, 0);
         engine gen(12345);
         set s;
         s.insert(dist(gen));
-        REQUIRE(s.size() == 1);
-        REQUIRE(*s.begin() == 5);
+        s.insert(dist(gen));
+        REQUIRE(s.size() == 2);
     }
 
     SECTION("Range [-1, 1]") {
@@ -78,5 +78,14 @@ TEST_CASE("edge cases: small ranges", "[uniq_distribution][edge]") {
         s.insert(dist(gen));
         s.insert(dist(gen));
         REQUIRE(s.size() == 3);
+    }
+
+    SECTION("Range [5, 5]") {
+        uniq dist(5, 5);
+        engine gen(12345);
+        set s;
+        s.insert(dist(gen));
+        REQUIRE(s.size() == 1);
+        REQUIRE(*s.begin() == 5);
     }
 }
