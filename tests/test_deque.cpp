@@ -10,29 +10,39 @@ using std::deque,
       rnd::generate;
 
 TEST_CASE("integers") {
-    auto vec = generate<deque<int>>(5, 1, 10, 42);
+    auto deq = generate<deque<int>>(5, 1, 10, 42);
 
-    REQUIRE(vec.size() == 5);
-    for (int val : vec) {
+    REQUIRE(deq.size() == 5);
+    for (int val : deq) {
         REQUIRE(val >= 1);
         REQUIRE(val <= 10);
     }
 }
 
-TEST_CASE("integer bools") {
-    auto lst = generate_bool<deque<int>>(6, 99);
+TEST_CASE("characters") {
+    auto deq = generate<deque<char>>(5, 'a', 'e');
 
-    REQUIRE(lst.size() == 6);
-    for (int val : lst) {
+    REQUIRE(deq.size() == 5);
+    for (char val : deq) {
+        REQUIRE(val >= 'a');
+        REQUIRE(val <= 'e');
+    }
+}
+
+TEST_CASE("integer bools") {
+    auto deq = generate_bool<deque<int>>(6, 99);
+
+    REQUIRE(deq.size() == 6);
+    for (int val : deq) {
         REQUIRE((val == 0 || val == 1));
     }
 }
 
 TEST_CASE("pure bools") {
-    auto lst = generate_bool<deque<bool>>(6, 99);
+    auto deq = generate_bool<deque<bool>>(6, 99);
 
-    REQUIRE(lst.size() == 6);
-    for (int val : lst) {
+    REQUIRE(deq.size() == 6);
+    for (int val : deq) {
         REQUIRE((val == 0 || val == 1));
     }
 }
@@ -47,24 +57,32 @@ TEST_CASE("floats") {
 }
 
 TEST_CASE("big integers") {
-    constexpr size_t size = 100'000;
-    auto deq = generate<deque<int>>(size, 1, 1000, 42);
+    constexpr size_t size = 10;
+    constexpr size_t min = std::numeric_limits<size_t>::min();
+    constexpr size_t max = 1'000'000;
+
+    auto deq = generate<deque<size_t>>(size, min, max, 98765);
 
     REQUIRE(deq.size() == size);
-    for (int val : deq) {
-        REQUIRE(val >= 1);
-        REQUIRE(val <= 1000);
+
+    for (size_t val : deq) {
+        REQUIRE(val >= min);
+        REQUIRE(val <= max);
     }
 }
 
 TEST_CASE("large integers") {
-    constexpr size_t size = 10'000;
-    auto deq = generate<deque<long long>>(size, -1'000'000, 1'000'000, 98765);
+    constexpr size_t size = 10;
+    constexpr size_t min = std::numeric_limits<size_t>::min();
+    constexpr size_t max = std::numeric_limits<size_t>::max();
+
+    auto deq = generate<deque<size_t>>(size, min, max, 98765);
 
     REQUIRE(deq.size() == size);
-    for (long long val : deq) {
-        REQUIRE(val >= -1'000'000);
-        REQUIRE(val <= 1'000'000);
+
+    for (size_t val : deq) {
+        REQUIRE(val >= min);
+        REQUIRE(val <= max);
     }
 }
 

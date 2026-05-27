@@ -9,7 +9,7 @@ using std::stack,
       rnd::generate_uniq,
       rnd::generate;
 
-TEST_CASE("integers on stack") {
+TEST_CASE("integers") {
     auto stk = generate<stack<int>>(5, 10, 20, 42);
 
     auto tmp = stk;
@@ -24,7 +24,22 @@ TEST_CASE("integers on stack") {
     REQUIRE(count == 5);
 }
 
-TEST_CASE("bools on stack") {
+TEST_CASE("characters") {
+    auto stk = generate<stack<char>>(5, 'a', 'e');
+
+    auto tmp = stk;
+    int count = 0;
+    while (!tmp.empty()) {
+        char val = tmp.top();
+        REQUIRE(val >= 'a');
+        REQUIRE(val <= 'e');
+        tmp.pop();
+        ++count;
+    }
+    REQUIRE(count == 5);
+}
+
+TEST_CASE("bools") {
     auto stk = generate_bool<stack<bool>>(6, 99);
 
     auto tmp = stk;

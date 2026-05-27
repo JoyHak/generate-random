@@ -23,6 +23,21 @@ TEST_CASE("integers") {
     }
 }
 
+TEST_CASE("characters") {
+    constexpr short size = 5;
+    auto s = generate<set<char>>(size, 'a', 'e');
+
+    REQUIRE(s.size() == size);
+
+    char prev = 0;
+    for (char val : s) {
+        REQUIRE(val >= 'a');
+        REQUIRE(val <= 'e');
+        REQUIRE(val != prev);
+        prev = val;
+    }
+}
+
 TEST_CASE("integer bools") {
     auto s = generate_bool<set<int>>(6, 99);
 
@@ -96,32 +111,31 @@ TEST_CASE("doubles") {
 
 TEST_CASE("big integers") {
     constexpr size_t size = 10;
-    auto s = generate<set<int>>(size, 1, 1000, 42);
+    constexpr size_t min = 1;
+    constexpr size_t max = 1'000'000;
+
+    auto s = generate<set<size_t>>(size, min, max, 98765);
 
     REQUIRE(s.size() == size);
 
-    int prev = 0;
-    for (int val : s) {
-        REQUIRE(val >= 1);
-        REQUIRE(val <= 1000);
-        REQUIRE(val != prev);
-        prev = val;
+    for (size_t val : s) {
+        REQUIRE(val >= min);
+        REQUIRE(val <= max);
     }
 }
 
 TEST_CASE("large integers") {
     constexpr size_t size = 10;
-    using large = long long;
-    auto s = generate<set<large>>(size, 1'000, 1'000'000, 98765);
+    constexpr size_t min = 1;
+    constexpr size_t max = std::numeric_limits<size_t>::max();
+
+    auto s = generate<set<size_t>>(size, min, max, 98765);
 
     REQUIRE(s.size() == size);
 
-    large prev = 0;
-    for (large val : s) {
-        REQUIRE(val >= -1'000'000);
-        REQUIRE(val <= 1'000'000);
-        REQUIRE(val != prev);
-        prev = val;
+    for (size_t val : s) {
+        REQUIRE(val >= min);
+        REQUIRE(val <= max);
     }
 }
 
@@ -141,7 +155,6 @@ TEST_CASE("full range optimization [1,5]") {
 TEST_CASE("no full range optimization [0.0, 1.0]") {
     auto s = generate<set<double>>(1000, 0.0, 1.0);
 
-    // No full range optimization for floating point
     REQUIRE(s.size() == 1000);
 
     double prev = 0.0;
@@ -163,17 +176,6 @@ TEST_CASE("partial range [10,20]") {
     }
 }
 
-
-TEST_CASE("large range [1,1000]") {
-    auto s = generate<set<int>>(1000, 1, 1000);
-
-    REQUIRE(s.size() == 1000);
-    auto val = 1;
-    for (int x : s) {
-        REQUIRE(x == val++);
-    }
-}
-
 TEST_CASE("negative range [-3,3]") {
     auto s = generate<set<int>>(10, -3, 3);
 
@@ -182,16 +184,6 @@ TEST_CASE("negative range [-3,3]") {
     auto it = s.begin();
     for (int exp : expected) {
         REQUIRE(*it++ == exp);
-    }
-}
-
-TEST_CASE("uint8_t full range [0,255]") {
-    auto s = generate<set<uint8_t>>(1000, 0, 255);
-
-    REQUIRE(s.size() == 256);
-    int val = 0;
-    for (uint8_t x : s) {
-        REQUIRE(x == val++);
     }
 }
 

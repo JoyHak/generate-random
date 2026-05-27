@@ -44,6 +44,11 @@ TEST_CASE("vector of bools") {
     REQUIRE(vec.size() == 2);
 }
 
+TEST_CASE("vector of chars") {
+    auto vec = generate_uniq<vector<char>>(7, 'A', 'G');
+    REQUIRE(vec.size() == 7);
+}
+
 TEST_CASE("deque, no duplicates") {
     auto deq = generate_uniq<deque<int>>(15, 10, 50, 12345);
     REQUIRE(deq.size() == 15);
@@ -75,6 +80,11 @@ TEST_CASE("deque of floats") {
 TEST_CASE("deque of bools") {
     auto deq = generate_uniq<deque<bool>>(10, true, false);
     REQUIRE(deq.size() == 2);
+}
+
+TEST_CASE("deque of chars") {
+    auto deq = generate_uniq<deque<char>>(7, 'A', 'G');
+    REQUIRE(deq.size() == 7);
 }
 
 TEST_CASE("list, no duplicates") {
@@ -116,6 +126,17 @@ TEST_CASE("list of bools") {
     }
 }
 
+TEST_CASE("list of chars") {
+    auto lst = generate_uniq<list<char>>(7, 'A', 'G');
+
+    REQUIRE(lst.size() == 7);
+
+    for (char val : lst) {
+        REQUIRE(val >= 'A');
+        REQUIRE(val <= 'G');
+    }
+}
+
 TEST_CASE("unordered_set, no duplicates") {
     auto uset = generate_uniq<unordered_set<int>>(50, 1, 1000, 42);
 
@@ -149,6 +170,11 @@ TEST_CASE("unordered_set of floats") {
     REQUIRE(s.size() == 15);
 }
 
+TEST_CASE("unordered_set of chars") {
+    auto s = generate_uniq<unordered_set<char>>(15, 'a', 'z');
+    REQUIRE(s.size() == 15);
+}
+
 TEST_CASE("set, no duplicates") {
     auto s = generate_uniq<set<int>>(10, 1, 100, 123);
 
@@ -172,5 +198,10 @@ TEST_CASE("set, full range [1,10]") {
 
 TEST_CASE("set of floats") {
     auto s = generate_uniq<set<float>>(15, 10.0f, 25.0f);
+    REQUIRE(s.size() == 15);
+}
+
+TEST_CASE("set of chars") {
+    auto s = generate_uniq<set<char>>(15, 'a', 'z');
     REQUIRE(s.size() == 15);
 }

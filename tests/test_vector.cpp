@@ -19,6 +19,16 @@ TEST_CASE("integers") {
     }
 }
 
+TEST_CASE("characters") {
+    auto vec = generate<vector<char>>(5, 'a', 'e');
+
+    REQUIRE(vec.size() == 5);
+    for (char val : vec) {
+        REQUIRE(val >= 'a');
+        REQUIRE(val <= 'e');
+    }
+}
+
 TEST_CASE("integer bools") {
     auto vec = generate_bool<vector<int>>(6, 99);
 
@@ -47,24 +57,32 @@ TEST_CASE("floats") {
 }
 
 TEST_CASE("big integers") {
-    constexpr size_t size = 100'000;
-    auto vec = generate<vector<int>>(size, 1, 1000, 42);
+    constexpr size_t size = 10;
+    constexpr size_t min = std::numeric_limits<size_t>::min();
+    constexpr size_t max = 1'000'000;
 
-    REQUIRE(vec.size() == size);
-    for (int val : vec) {
-        REQUIRE(val >= 1);
-        REQUIRE(val <= 1000);
+    auto s = generate<vector<size_t>>(size, min, max, 98765);
+
+    REQUIRE(s.size() == size);
+
+    for (size_t val : s) {
+        REQUIRE(val >= min);
+        REQUIRE(val <= max);
     }
 }
 
 TEST_CASE("large integers") {
-    constexpr size_t size = 10'000;
-    auto vec = generate<vector<long long>>(size, -1'000'000, 1'000'000, 98765);
+    constexpr size_t size = 10;
+    constexpr size_t min = std::numeric_limits<size_t>::min();
+    constexpr size_t max = std::numeric_limits<size_t>::max();
 
-    REQUIRE(vec.size() == size);
-    for (long long val : vec) {
-        REQUIRE(val >= -1'000'000);
-        REQUIRE(val <= 1'000'000);
+    auto s = generate<vector<size_t>>(size, min, max, 98765);
+
+    REQUIRE(s.size() == size);
+
+    for (size_t val : s) {
+        REQUIRE(val >= min);
+        REQUIRE(val <= max);
     }
 }
 

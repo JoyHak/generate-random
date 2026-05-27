@@ -22,6 +22,19 @@ TEST_CASE("integers") {
     REQUIRE(count == size);
 }
 
+TEST_CASE("characters") {
+    constexpr size_t size = 5;
+    auto arr = generate<array<char, size>>(size, 'a', 'e', 42);
+
+    size_t count = 0;
+    for (char val : arr) {
+        REQUIRE(val >= 'a');
+        REQUIRE(val <= 'e');
+        ++count;
+    }
+    REQUIRE(count == size);
+}
+
 TEST_CASE("integer bools") {
     constexpr size_t size = 6;
     auto arr = generate_bool<array<int, size>>(size, 99);
