@@ -39,6 +39,11 @@ TEST_CASE("vector of floats") {
     REQUIRE(vec.size() == 10);
 }
 
+TEST_CASE("vector of bools") {
+    auto vec = generate_uniq<vector<bool>>(10, true, false);
+    REQUIRE(vec.size() == 2);
+}
+
 TEST_CASE("deque, no duplicates") {
     auto deq = generate_uniq<deque<int>>(15, 10, 50, 12345);
     REQUIRE(deq.size() == 15);
@@ -67,6 +72,11 @@ TEST_CASE("deque of floats") {
     REQUIRE(deq.size() == 15);
 }
 
+TEST_CASE("deque of bools") {
+    auto deq = generate_uniq<deque<bool>>(10, true, false);
+    REQUIRE(deq.size() == 2);
+}
+
 TEST_CASE("list, no duplicates") {
     auto lst = generate_uniq<list<int>>(12, 1, 20, 54321);
 
@@ -84,6 +94,26 @@ TEST_CASE("list, sorted ascending") {
 
     auto it = std::adjacent_find(vec.begin(), vec.end());
     REQUIRE(it == vec.end());
+}
+
+TEST_CASE("list of floats") {
+    auto lst = generate_uniq<list<float>>(7, 0.1f, 10.0f);
+
+    REQUIRE(lst.size() == 7);
+
+    for (float val : lst) {
+        REQUIRE(val >= 0.1f);
+        REQUIRE(val <= 10.0f);
+    }
+}
+
+TEST_CASE("list of bools") {
+    auto lst = generate_uniq<list<bool>>(6, true, false);
+
+    REQUIRE(lst.size() == 2);
+    for (bool val : lst) {
+        REQUIRE((val == true || val == false));
+    }
 }
 
 TEST_CASE("unordered_set, no duplicates") {
@@ -115,8 +145,8 @@ TEST_CASE("unordered_set, detect manually") {
 }
 
 TEST_CASE("unordered_set of floats") {
-    auto deq = generate_uniq<unordered_set<float>>(15, 10.0f, 25.0f);
-    REQUIRE(deq.size() == 15);
+    auto s = generate_uniq<unordered_set<float>>(15, 10.0f, 25.0f);
+    REQUIRE(s.size() == 15);
 }
 
 TEST_CASE("set, no duplicates") {
