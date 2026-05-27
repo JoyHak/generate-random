@@ -70,7 +70,7 @@ TEST_CASE("1 bool") {
     auto s = generate_bool<unordered_set<bool>>(1, 99);
 
     REQUIRE(s.size() == 1);
-    REQUIRE(s.contains(false));
+    REQUIRE(s.contains(true));
 }
 
 TEST_CASE("2 bools") {

@@ -1,4 +1,3 @@
-option(ENABLE_ICECREAM "If ON the tests to icecream library will be enabled" OFF)
 option(ENABLE_DUPLICATES "If ON the tests for duplicates in std::set will be enabled" OFF)
 option(ENABLE_UNIQ "If ON the stress tests for unique elements will be enabled" OFF)
 
@@ -27,9 +26,6 @@ declare_test(stack)
 declare_test(set)
 declare_test(unordered_set)
 
-if (ENABLE_ICECREAM)
-  declare_test(icecream)
-endif()
 if (ENABLE_DUPLICATES)
   declare_test(duplicates)
 endif()

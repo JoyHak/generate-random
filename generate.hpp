@@ -452,7 +452,7 @@ inline size_t clamp_count(const size_t& count, T, T) {
  */
 template<
     associative_container Container,
-    uniform_generator Generator = std::mt19937,
+    uniform_generator Generator = std::mt19937_64,
     typename Seed = unsigned int
 >
 Container generate_bool(
@@ -486,7 +486,7 @@ Container generate_bool(
  */
 template<
     typename Container,
-    uniform_generator Generator = std::mt19937,
+    uniform_generator Generator = std::mt19937_64,
     typename Seed = unsigned int
 >
 Container generate_bool(
@@ -524,7 +524,7 @@ Container generate_bool(
 template<
     typename Container,
     arithmetic Item = typename Container::value_type,
-    uniform_generator Generator = std::mt19937,
+    uniform_generator Generator = std::mt19937_64,
     typename Seed = unsigned int
 >
 Container generate_uniq(
@@ -559,7 +559,7 @@ Container generate_uniq(
 template<
     associative_container Container,
     arithmetic Item = typename Container::value_type,
-    uniform_generator Generator = std::mt19937,
+    uniform_generator Generator = std::mt19937_64,
     typename Seed = unsigned int
 >
 Container generate(
@@ -585,7 +585,7 @@ Container generate(
 template<
     typename Container,
     arithmetic Item = typename Container::value_type,
-    uniform_generator Generator = std::mt19937,
+    uniform_generator Generator = std::mt19937_64,
     typename Seed = unsigned int
 >
 Container generate(
